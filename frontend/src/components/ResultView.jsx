@@ -338,13 +338,17 @@ function FitScoreDetail({ supplier: s, allSuppliers }) {
 
   return (
     <div className="p-3 bg-slate-50 rounded border border-slate-100">
-      <div className="flex items-center gap-2 mb-2">
-        <p className="text-xs font-medium text-slate-600">Fit Score Breakdown</p>
-        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700">
+      <div className="flex items-center gap-2 mb-2 flex-wrap">
+        <p className="text-xs font-medium text-slate-600">Fit Score</p>
+        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700">
           {(s.composite_score * 100).toFixed(1)}%
-          {(s.preferred || s.user_preferred) && ' +10% preferred'}
-          {s.historical_performance?.experience_score > 0 && ` +${(s.historical_performance.experience_score * 5).toFixed(1)}% exp`}
         </span>
+        {(s.preferred || s.user_preferred) && (
+          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-600">+10% preferred</span>
+        )}
+        {s.historical_performance?.experience_score > 0 && (
+          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-50 text-indigo-600">+{(s.historical_performance.experience_score * 5).toFixed(1)}% exp</span>
+        )}
       </div>
       <div className="space-y-1.5">
         {factors.map(f => (

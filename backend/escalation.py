@@ -101,6 +101,36 @@ def evaluate_escalations(
             blocking=False,
         )
 
+    # ER-LEAD: Lead time infeasibility — advisory
+    if shortlist:
+        infeasible = [s for s in shortlist if s.lead_time_feasible == "infeasible"]
+        expedited_only = [s for s in shortlist if s.lead_time_feasible == "expedited_only"]
+        if len(infeasible) == len(shortlist):
+            add_esc(
+                "ER-LEAD",
+                f"No supplier can meet the requested deadline — all {len(shortlist)} supplier(s) "
+                f"have infeasible lead times. Consider extending the delivery date.",
+                "Sourcing Excellence Lead",
+                blocking=False,
+            )
+        elif infeasible:
+            names = ", ".join(s.supplier_name for s in infeasible)
+            add_esc(
+                "ER-LEAD",
+                f"{len(infeasible)} supplier(s) cannot meet deadline ({names}). "
+                f"{len(shortlist) - len(infeasible)} supplier(s) can still deliver on time.",
+                "Sourcing Excellence Lead",
+                blocking=False,
+            )
+        elif len(expedited_only) == len(shortlist):
+            add_esc(
+                "ER-LEAD",
+                f"All {len(shortlist)} supplier(s) require expedited shipping to meet the deadline. "
+                f"Expedited pricing will apply — see per-supplier cost details.",
+                "Sourcing Excellence Lead",
+                blocking=False,
+            )
+
     # ER-RISK: Top-ranked supplier has elevated/high risk tier — advisory
     if shortlist and shortlist[0].risk_composite:
         rc = shortlist[0].risk_composite

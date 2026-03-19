@@ -10,9 +10,9 @@ from datetime import datetime, date
 from backend.data_loader import DataStore, get_store
 from backend.models import (
     ProcessRequest, PipelineResult, RequestInterpretation,
-    Recommendation, AuditTrail, MissingField,
+    Recommendation, AuditTrail, MissingField, ParameterOverride,
 )
-from backend.validation import validate_request
+from backend.validation import validate_request, validate_feasibility
 from backend.policy_engine import evaluate_policies
 from backend.supplier_matcher import match_suppliers
 from backend.scoring import score_and_rank_suppliers
@@ -90,7 +90,6 @@ def process_request(req: ProcessRequest) -> PipelineResult:
             delivery_countries=interp.delivery_countries,
             quantity=interp.quantity,
             days_available=interp.days_until_required,
-            esg_required=interp.esg_requirement,
             preferred_supplier_name=interp.preferred_supplier_stated,
             incumbent_supplier_name=interp.incumbent_supplier,
             data_residency_required=interp.data_residency_required,
@@ -119,6 +118,19 @@ def process_request(req: ProcessRequest) -> PipelineResult:
         )
 
     result.supplier_shortlist = shortlist
+
+    # --- Step 3b: Post-matching feasibility validation ---
+    # Budget/lead-time advisories now use only eligible suppliers (not excluded ones)
+    if shortlist:
+        validation = validate_feasibility(
+            validation=validation,
+            shortlist=shortlist,
+            budget=interp.budget_amount,
+            currency=interp.currency,
+            quantity=interp.quantity,
+            days_until_required=interp.days_until_required,
+        )
+        result.validation = validation
 
     # --- Step 6: Supplier Discovery ---
     result.supplier_discovery = discover_suppliers(
@@ -166,7 +178,7 @@ def process_request(req: ProcessRequest) -> PipelineResult:
     result.escalations = escalations
 
     # --- Step 10: Recommendation ---
-    result.recommendation = _build_recommendation(shortlist, escalations, interp)
+    result.recommendation = _build_recommendation(shortlist, escalations, interp, store)
 
     # --- Step 10b: Overall Narrative ---
     request_summary = {
@@ -235,6 +247,7 @@ def process_request(req: ProcessRequest) -> PipelineResult:
         pricing_tiers_applied=shortlist[0].pricing_tier_applied if shortlist else "N/A",
         historical_awards_consulted=bool(awards),
         historical_award_note=hist_note,
+        parameter_overrides=_detect_overrides(req, raw),
     )
 
     result.missing_fields = _compute_missing_fields(interp, shortlist, excluded, validation)
@@ -406,7 +419,6 @@ def process_request_streaming(req: ProcessRequest):
             delivery_countries=interp.delivery_countries,
             quantity=interp.quantity,
             days_available=interp.days_until_required,
-            esg_required=interp.esg_requirement,
             preferred_supplier_name=interp.preferred_supplier_stated,
             incumbent_supplier_name=interp.incumbent_supplier,
             data_residency_required=interp.data_residency_required,
@@ -466,6 +478,18 @@ def process_request_streaming(req: ProcessRequest):
         yield "narration", f"Generated notes for {len(shortlist)} supplier(s)", narration_data
 
     result.supplier_shortlist = shortlist
+
+    # --- Post-matching feasibility validation ---
+    if shortlist:
+        validation = validate_feasibility(
+            validation=validation,
+            shortlist=shortlist,
+            budget=interp.budget_amount,
+            currency=interp.currency,
+            quantity=interp.quantity,
+            days_until_required=interp.days_until_required,
+        )
+        result.validation = validation
 
     # --- Step 6: Supplier Discovery ---
     yield "discovery", "Checking if new supplier search is needed...", None
@@ -577,7 +601,7 @@ def process_request_streaming(req: ProcessRequest):
 
     # --- Step 8: Recommendation ---
     yield "recommendation", "Building final recommendation...", None
-    result.recommendation = _build_recommendation(shortlist, escalations, interp)
+    result.recommendation = _build_recommendation(shortlist, escalations, interp, store)
 
     # --- Step 8b: Overall Narrative ---
     yield "narrative", "Generating audit-ready narrative summary...", None
@@ -664,20 +688,27 @@ def process_request_streaming(req: ProcessRequest):
                 f"Escalation required: {winner['escalation_required']}."
             )
 
+    overrides = _detect_overrides(req, raw)
     result.audit_trail = AuditTrail(
         policies_checked=policies_checked,
         supplier_ids_evaluated=list(set(supplier_ids_evaluated)),
         pricing_tiers_applied=shortlist[0].pricing_tier_applied if shortlist else "N/A",
         historical_awards_consulted=bool(awards),
         historical_award_note=hist_note,
+        parameter_overrides=overrides,
     )
     audit_data = {
         "policies_checked": policies_checked,
         "suppliers_evaluated": len(set(supplier_ids_evaluated)),
         "pricing_tier": shortlist[0].pricing_tier_applied if shortlist else "N/A",
         "historical_award": hist_note,
+        "parameter_overrides": [
+            {"field": o.field, "original": o.original_value, "new": o.new_value}
+            for o in overrides
+        ],
     }
-    yield "audit", f"Checked {len(policies_checked)} policies, evaluated {len(set(supplier_ids_evaluated))} suppliers", audit_data
+    override_note = f", {len(overrides)} parameter override(s)" if overrides else ""
+    yield "audit", f"Checked {len(policies_checked)} policies, evaluated {len(set(supplier_ids_evaluated))} suppliers{override_note}", audit_data
 
     # --- Compute missing fields ---
     result.missing_fields = _compute_missing_fields(interp, shortlist, excluded, validation)
@@ -788,6 +819,32 @@ def _compute_missing_fields(
             seen.add(f.field)
             deduped.append(f)
     return deduped
+
+
+def _detect_overrides(req: ProcessRequest, raw: dict | None) -> list[ParameterOverride]:
+    """Detect which fields the user changed from the original request."""
+    if not raw:
+        return []
+    overrides = []
+    checks = [
+        ("quantity", req.quantity, raw.get("quantity")),
+        ("budget_amount", req.budget_amount, raw.get("budget_amount")),
+        ("currency", req.currency, raw.get("currency")),
+        ("category_l1", req.category_l1, raw.get("category_l1")),
+        ("category_l2", req.category_l2, raw.get("category_l2")),
+        ("required_by_date", req.required_by_date, raw.get("required_by_date")),
+        ("preferred_supplier", req.preferred_supplier_mentioned, raw.get("preferred_supplier_mentioned")),
+        ("delivery_countries", ",".join(req.delivery_countries) if req.delivery_countries else None,
+         ",".join(raw.get("delivery_countries", []))),
+    ]
+    for field, new_val, orig_val in checks:
+        if new_val is not None and str(new_val) != str(orig_val):
+            overrides.append(ParameterOverride(
+                field=field,
+                original_value=str(orig_val) if orig_val is not None else None,
+                new_value=str(new_val),
+            ))
+    return overrides
 
 
 def _calc_days_until(date_str: str) -> int | None:
@@ -942,13 +999,13 @@ def _build_recommendation(
     shortlist: list,
     escalations: list,
     interp: RequestInterpretation,
+    store: DataStore,
 ) -> Recommendation:
     """Build the final recommendation based on shortlist and escalations.
 
     Self-healing: only compliance blocks produce cannot_proceed.
     Everything else resolves to recommend or recommend_with_escalation.
-    When the recommended supplier differs from the stated preferred or incumbent,
-    the reason explains why.
+    Explains: why the winner won, preferred/incumbent trade-offs, historical context.
     """
     blocking = [e for e in escalations if e.blocking]
     advisories = [e for e in escalations if not e.blocking]
@@ -976,6 +1033,33 @@ def _build_recommendation(
             f"Recommended: {winner.supplier_name} at "
             f"{winner.currency} {winner.total_price:,.2f}{unit_note}."
         ]
+
+        # Explain WHY the winner won — cite the dominant scoring factors
+        strengths = []
+        if len(shortlist) > 1:
+            runner = shortlist[1]
+            if winner.total_price <= runner.total_price:
+                savings = runner.total_price - winner.total_price
+                strengths.append(f"lowest price (saves {winner.currency} {savings:,.0f} vs #{2})")
+            if winner.quality_score >= runner.quality_score:
+                strengths.append(f"quality {winner.quality_score}/100")
+            if winner.risk_score <= runner.risk_score:
+                tier = winner.risk_composite.tier if winner.risk_composite else "N/A"
+                strengths.append(f"risk tier {tier}")
+        else:
+            strengths.append(f"quality {winner.quality_score}/100")
+            tier = winner.risk_composite.tier if winner.risk_composite else "N/A"
+            strengths.append(f"risk tier {tier}")
+        if winner.lead_time_feasible == "standard":
+            strengths.append("standard delivery")
+        reason_parts.append(f"Ranked #1 on: {', '.join(strengths)} (fit score {winner.composite_score * 100:.1f}%).")
+
+        # Historical context for the winner
+        winner_awards = [a for a in store.historical_awards if a["supplier_id"] == winner.supplier_id]
+        if winner_awards:
+            wins = len([a for a in winner_awards if a["awarded"]])
+            total = len(winner_awards)
+            reason_parts.append(f"Track record: {wins}/{total} past awards ({wins/total*100:.0f}% win rate).")
 
         # Explain if winner differs from stated preferred supplier
         pref_name = interp.preferred_supplier_stated

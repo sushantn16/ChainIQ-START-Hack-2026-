@@ -664,6 +664,21 @@ function AuditPanel({ audit }) {
           <p className="text-sm text-slate-600">{audit.historical_award_note}</p>
         </div>
       )}
+      {audit.parameter_overrides?.length > 0 && (
+        <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <p className="text-xs font-medium text-blue-700 mb-2">Parameter Overrides (user modified)</p>
+          <div className="space-y-1">
+            {audit.parameter_overrides.map((o, i) => (
+              <div key={i} className="flex items-center gap-2 text-xs">
+                <span className="font-medium text-slate-700 w-28">{o.field.replace(/_/g, ' ')}</span>
+                <span className="text-slate-400 line-through">{o.original_value || '—'}</span>
+                <span className="text-slate-400">&rarr;</span>
+                <span className="font-medium text-blue-700">{o.new_value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -181,6 +181,12 @@ class Recommendation(BaseModel):
     narrative: Optional[str] = None
 
 
+class ParameterOverride(BaseModel):
+    field: str
+    original_value: Optional[str] = None
+    new_value: Optional[str] = None
+
+
 class AuditTrail(BaseModel):
     policies_checked: list[str] = []
     supplier_ids_evaluated: list[str] = []
@@ -190,6 +196,7 @@ class AuditTrail(BaseModel):
     )
     historical_awards_consulted: bool = False
     historical_award_note: Optional[str] = None
+    parameter_overrides: list[ParameterOverride] = []
 
 
 class MissingField(BaseModel):

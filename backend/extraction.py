@@ -188,7 +188,7 @@ def generate_overall_narrative(
 
     prompt = f"""Generate a concise audit-ready recommendation summary for this procurement request.
 
-IMPORTANT: Rank #1 is the recommended supplier. This ranking was computed by a weighted fit score (price 40%, quality 30%, risk 20%, lead time 10%). Do NOT recommend a different supplier. Your job is to explain WHY rank #1 won, not to pick a different winner.
+IMPORTANT: Rank #1 is the recommended supplier. This ranking was computed by a weighted fit score (price 35%, quality 35%, risk 20%, lead time 10%). Do NOT recommend a different supplier. Your job is to explain WHY rank #1 won, not to pick a different winner.
 
 Request: {request_summary.get('category_l2', 'Unknown')} — {request_summary.get('quantity', '?')} units
 Budget: {request_summary.get('currency', '')} {request_summary.get('budget_amount', 'not specified')}

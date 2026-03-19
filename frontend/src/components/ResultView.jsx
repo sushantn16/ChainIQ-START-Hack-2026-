@@ -326,8 +326,8 @@ function FitScoreDetail({ supplier: s, allSuppliers }) {
   const riskNorm = 1 - s.risk_score / 100;
 
   const factors = [
-    { label: 'Price', weight: 40, score: priceNorm, color: 'bg-emerald-500' },
-    { label: 'Quality', weight: 30, score: qualityNorm, color: 'bg-blue-500' },
+    { label: 'Price', weight: 35, score: priceNorm, color: 'bg-emerald-500' },
+    { label: 'Quality', weight: 35, score: qualityNorm, color: 'bg-blue-500' },
     { label: 'Risk', weight: 20, score: riskNorm, color: 'bg-amber-500' },
     { label: 'Lead Time', weight: 10, score: leadNorm, color: 'bg-purple-500' },
   ];
@@ -338,7 +338,7 @@ function FitScoreDetail({ supplier: s, allSuppliers }) {
         <p className="text-xs font-medium text-slate-600">Fit Score Breakdown</p>
         <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700">
           {(s.composite_score * 100).toFixed(1)}%
-          {s.preferred && ' +5% preferred'}
+          {s.preferred && ' +10% preferred'}
         </span>
       </div>
       <div className="space-y-1.5">

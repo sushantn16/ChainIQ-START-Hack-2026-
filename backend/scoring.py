@@ -77,15 +77,15 @@ def compute_composite_score(
 ) -> float:
     """
     Compute weighted composite score.
-    Weights: price=0.40, quality=0.30, risk=0.20, lead=0.10 (sum to 1.00).
-    Preferred supplier gets a flat +0.05 additive bonus.
+    Weights: price=0.35, quality=0.35, risk=0.20, lead=0.10 (sum to 1.00).
+    Preferred supplier gets a flat +0.10 additive bonus.
 
     risk_total is the composite risk score (0-100) from risk_scoring module.
     """
     if weights is None:
         weights = {
-            "price": 0.40,
-            "quality": 0.30,
+            "price": 0.35,
+            "quality": 0.35,
             "risk": 0.20,
             "lead": 0.10,
         }
@@ -111,7 +111,7 @@ def compute_composite_score(
 
     # Flat preferred supplier bonus (additive, outside the weighted dimensions)
     if is_preferred:
-        score += 0.05
+        score += 0.10
 
     return round(score, 4)
 

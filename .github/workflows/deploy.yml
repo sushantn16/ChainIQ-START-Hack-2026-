@@ -33,7 +33,7 @@ jobs:
           zip -r deploy.zip backend/ data/ frontend/dist/ requirements.txt startup.sh -x "backend/__pycache__/*"
 
       - name: Deploy to Azure App Service
-        uses: azure/webapps-deploy@v3
+        uses: azure/webapps-deploy@v2
         with:
           app-name: chainiq-app
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}

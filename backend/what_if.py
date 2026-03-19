@@ -163,6 +163,7 @@ def compute_what_if(
                 currency=currency,
                 quantity=quantity,
                 data_residency_required=data_residency_required,
+                esg_required=esg_requirement,
                 contract_value=budget,
                 store=store,
             )
@@ -231,4 +232,48 @@ def compute_what_if(
                         "impact": f"Unit price drops by {currency} {savings_per_unit:,.2f} ({savings_per_unit/current_tier['unit_price']*100:.1f}% saving)",
                     })
 
-    return scenarios[:5]
+    # --- Scenario 6: Cost of choosing preferred supplier ---
+    # When the user stated a preferred supplier and it's not #1, show the trade-off
+    if preferred_supplier_name and shortlist and shortlist[0].supplier_name != preferred_supplier_name:
+        pref_entry = next((s for s in shortlist if s.supplier_name == preferred_supplier_name), None)
+        if pref_entry:
+            winner = shortlist[0]
+            premium = pref_entry.total_price - winner.total_price
+            premium_pct = (premium / winner.total_price) * 100 if winner.total_price else 0
+            quality_diff = pref_entry.quality_score - winner.quality_score
+            risk_diff = winner.risk_score - pref_entry.risk_score  # lower risk = better
+
+            trade_off_parts = []
+            if premium > 0:
+                trade_off_parts.append(f"+{currency} {premium:,.2f} ({premium_pct:.1f}% premium)")
+            elif premium < 0:
+                trade_off_parts.append(f"saves {currency} {abs(premium):,.2f}")
+            if quality_diff > 0:
+                trade_off_parts.append(f"+{quality_diff} quality points")
+            elif quality_diff < 0:
+                trade_off_parts.append(f"{quality_diff} quality points")
+            if pref_entry.lead_time_feasible != winner.lead_time_feasible:
+                trade_off_parts.append(f"lead time: {pref_entry.lead_time_feasible} vs {winner.lead_time_feasible}")
+
+            within_budget = budget and pref_entry.total_price <= budget
+            budget_note = "Within budget." if within_budget else (
+                f"Exceeds budget by {currency} {pref_entry.total_price - budget:,.2f}." if budget else ""
+            )
+
+            scenarios.append({
+                "scenario": "choose_preferred",
+                "title": f"Go with preferred: {preferred_supplier_name}",
+                "description": (
+                    f"Choosing stated preferred {preferred_supplier_name} "
+                    f"(ranked #{pref_entry.rank}) over {winner.supplier_name} (ranked #1): "
+                    f"{'. '.join(trade_off_parts)}. {budget_note}"
+                ),
+                "parameter": "supplier_choice",
+                "current_value": winner.supplier_name,
+                "suggested_value": preferred_supplier_name,
+                "impact": f"Honors requester preference" + (
+                    f" at {premium_pct:.1f}% cost premium" if premium > 0 else ""
+                ),
+            })
+
+    return scenarios[:6]

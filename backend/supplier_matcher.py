@@ -7,6 +7,9 @@ from backend.models import ExcludedSupplier
 from backend.policy_engine import _is_supplier_restricted
 
 
+ESG_MINIMUM_THRESHOLD = 65  # Hard cutoff when ESG requirement is enabled
+
+
 def match_suppliers(
     category_l1: str,
     category_l2: str,
@@ -14,6 +17,7 @@ def match_suppliers(
     currency: str,
     quantity: int | None,
     data_residency_required: bool,
+    esg_required: bool,
     contract_value: float | None,
     store: DataStore,
 ) -> tuple[list[dict], list[ExcludedSupplier]]:
@@ -39,23 +43,12 @@ def match_suppliers(
             continue
         seen_ids.add(sid)
 
-        # 1. Geographic match: all delivery countries must be in service_regions
-        uncovered = [c for c in delivery_countries if c not in sup["service_regions"]]
-        if uncovered:
-            excluded.append(ExcludedSupplier(
-                supplier_id=sid,
-                supplier_name=name,
-                reason=f"Does not cover delivery countries: {', '.join(uncovered)}. Service regions: {', '.join(sup['service_regions'])}",
-            ))
-            continue
-
-        # 2. Restriction check (policies.json is authoritative)
+        # 1. Policy restriction check — must run first for correct audit trail
         is_restricted = _is_supplier_restricted(
             sid, name, category_l1, category_l2,
             delivery_countries, store.policies, contract_value,
         )
         if is_restricted:
-            # Find reason
             reason = "Restricted per policy"
             for r in store.policies.get("restricted_suppliers", []):
                 if r["supplier_id"] == sid and r["category_l1"] == category_l1:
@@ -65,6 +58,17 @@ def match_suppliers(
                 supplier_id=sid,
                 supplier_name=name,
                 reason=f"Restricted: {reason}",
+                reason_code="POLICY_RESTRICTED",
+            ))
+            continue
+
+        # 2. ESG compliance check (hard filter when ESG is required)
+        if esg_required and sup["esg_score"] < ESG_MINIMUM_THRESHOLD:
+            excluded.append(ExcludedSupplier(
+                supplier_id=sid,
+                supplier_name=name,
+                reason=f"ESG score ({sup['esg_score']}) below minimum threshold ({ESG_MINIMUM_THRESHOLD})",
+                reason_code="ESG_THRESHOLD",
             ))
             continue
 
@@ -74,6 +78,7 @@ def match_suppliers(
                 supplier_id=sid,
                 supplier_name=name,
                 reason="Does not support data residency requirements",
+                reason_code="DATA_RESIDENCY",
             ))
             continue
 
@@ -83,6 +88,18 @@ def match_suppliers(
                 supplier_id=sid,
                 supplier_name=name,
                 reason="Contract status is inactive",
+                reason_code="CONTRACT_INACTIVE",
+            ))
+            continue
+
+        # 5. Geographic match — runs last so policy restrictions take precedence
+        uncovered = [c for c in delivery_countries if c not in sup["service_regions"]]
+        if uncovered:
+            excluded.append(ExcludedSupplier(
+                supplier_id=sid,
+                supplier_name=name,
+                reason=f"Does not cover delivery countries: {', '.join(uncovered)}. Service regions: {', '.join(sup['service_regions'])}",
+                reason_code="GEO_COVERAGE",
             ))
             continue
 

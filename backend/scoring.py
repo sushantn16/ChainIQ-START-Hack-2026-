@@ -78,23 +78,25 @@ def compute_composite_score(
 ) -> float:
     """
     Compute weighted composite score.
-    Default weights: price=0.30, quality=0.20, risk=0.20, esg=0.10, lead=0.10, preferred=0.10
+    Default weights: price=0.30, quality=0.25, risk=0.20, esg=0.10, lead=0.05, preferred=0.10
+
+    ESG is a hard filter (handled in supplier_matcher) when esg_requirement=True.
+    Here, ESG weight is only used for soft ranking differentiation.
     """
     if weights is None:
         weights = {
             "price": 0.30,
-            "quality": 0.20,
+            "quality": 0.25,
             "risk": 0.20,
             "esg": 0.10,
-            "lead": 0.10,
+            "lead": 0.05,
             "preferred": 0.10,
         }
 
-    # If ESG not required, redistribute weight
+    # If ESG not required, redistribute weight to price and quality
     if not esg_required:
         esg_weight = weights["esg"]
         weights = {**weights, "esg": 0}
-        # Redistribute to price and quality
         weights["price"] += esg_weight / 2
         weights["quality"] += esg_weight / 2
 
@@ -110,13 +112,16 @@ def compute_composite_score(
     lead_scores = {"standard": 1.0, "expedited_only": 0.5, "infeasible": 0.0}
     lead_score = lead_scores.get(lead_time_status, 0.5)
 
+    # Preferred score
+    pref_score = 1.0 if is_preferred else 0.0
+
     score = (
         weights["price"] * price_norm
         + weights["quality"] * (quality_score / 100)
         + weights["risk"] * (1 - risk_score / 100)
         + weights["esg"] * (esg_score / 100)
         + weights["lead"] * lead_score
-        + weights["preferred"] * (1.0 if is_preferred else 0.0)
+        + weights["preferred"] * pref_score
     )
 
     return round(score, 4)
@@ -184,9 +189,7 @@ def score_and_rank_suppliers(
         sup = pd["supplier"]
         tier = pd["tier"]
 
-        is_on_preferred_list = sup.get("preferred_supplier", False)
-        is_user_preferred = sup["supplier_name"] == preferred_supplier_name
-        is_pref = is_on_preferred_list or is_user_preferred
+        is_preferred = sup.get("preferred_supplier", False) or sup["supplier_name"] == preferred_supplier_name
         is_incumbent = sup["supplier_name"] == incumbent_supplier_name
 
         score = compute_composite_score(
@@ -196,7 +199,7 @@ def score_and_rank_suppliers(
             risk_score=sup["risk_score"],
             esg_score=sup["esg_score"],
             lead_time_status=pd["lead_status"],
-            is_preferred=is_pref,
+            is_preferred=is_preferred,
             esg_required=esg_required,
         )
 
@@ -204,7 +207,7 @@ def score_and_rank_suppliers(
             rank=0,  # assigned after sorting
             supplier_id=sup["supplier_id"],
             supplier_name=sup["supplier_name"],
-            preferred=sup.get("preferred_supplier", False),
+            preferred=is_preferred,
             incumbent=is_incumbent,
             pricing_tier_applied=pd["tier_label"],
             unit_price=tier["unit_price"],

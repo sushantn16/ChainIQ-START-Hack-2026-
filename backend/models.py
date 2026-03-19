@@ -130,6 +130,7 @@ class ExcludedSupplier(BaseModel):
     supplier_id: str
     supplier_name: str
     reason: str
+    reason_code: str = ""
 
 
 class DiscoveredSupplier(BaseModel):

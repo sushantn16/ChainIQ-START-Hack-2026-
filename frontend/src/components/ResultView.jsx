@@ -341,16 +341,27 @@ function ScoreBadge({ label, value, max, invert = false, format }) {
   );
 }
 
+const REASON_CODE_LABELS = {
+  POLICY_RESTRICTED: 'Policy Restricted',
+  ESG_THRESHOLD:     'ESG Requirement Not Met',
+  DATA_RESIDENCY:    'No Local Data Centre',
+  CONTRACT_INACTIVE: 'Inactive Contract',
+  GEO_COVERAGE:      'Geographic Gap',
+};
+
 function ExcludedPanel({ excluded }) {
   return (
     <div className="space-y-2">
       {excluded.map((e, i) => (
-        <div key={i} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+        <div key={i} className="flex items-start justify-between p-3 bg-slate-50 rounded-lg gap-4">
           <div>
             <p className="text-sm font-medium text-slate-700">{e.supplier_name}</p>
             <p className="text-xs text-slate-500 font-mono">{e.supplier_id}</p>
+            <p className="text-xs text-slate-500 mt-1">{e.reason}</p>
           </div>
-          <span className="text-xs text-red-600 bg-red-50 px-2 py-1 rounded">{e.reason}</span>
+          <span className="text-xs font-medium px-2 py-1 rounded whitespace-nowrap bg-slate-200 text-slate-600">
+            {REASON_CODE_LABELS[e.reason_code] || e.reason_code || 'Excluded'}
+          </span>
         </div>
       ))}
     </div>
@@ -449,6 +460,7 @@ function WhatIfPanel({ scenarios }) {
     quantity_reduction: '📦',
     split_by_country: '🌍',
     volume_discount: '📈',
+    choose_preferred: '⭐',
   };
 
   return (

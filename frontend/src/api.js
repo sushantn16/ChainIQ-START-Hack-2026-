@@ -33,6 +33,11 @@ export async function processRequestStreaming(payload, onStep) {
     body: JSON.stringify(payload),
   });
 
+  if (!res.ok) {
+    const text = await res.text().catch(() => res.statusText);
+    throw new Error(`Server error ${res.status}: ${text}`);
+  }
+
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';

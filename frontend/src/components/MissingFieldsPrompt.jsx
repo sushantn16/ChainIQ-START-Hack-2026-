@@ -4,7 +4,12 @@ export default function MissingFieldsPrompt({ missingFields, interpretation, isP
   const [values, setValues] = useState(() => {
     const init = {};
     for (const f of missingFields) {
-      init[f.field] = f.suggestion || '';
+      // Don't pre-fill number/date fields with formatted suggestions — use them as placeholders only
+      if (f.type === 'number' || f.type === 'date') {
+        init[f.field] = '';
+      } else {
+        init[f.field] = f.suggestion || '';
+      }
     }
     return init;
   });
@@ -17,11 +22,11 @@ export default function MissingFieldsPrompt({ missingFields, interpretation, isP
     // Build enriched payload
     const payload = {};
 
-    // Carry forward existing interpretation fields
+    // Carry forward existing interpretation fields (use != null to preserve 0 values)
     if (interpretation.category_l1) payload.category_l1 = interpretation.category_l1;
     if (interpretation.category_l2) payload.category_l2 = interpretation.category_l2;
-    if (interpretation.quantity) payload.quantity = interpretation.quantity;
-    if (interpretation.budget_amount) payload.budget_amount = interpretation.budget_amount;
+    if (interpretation.quantity != null) payload.quantity = interpretation.quantity;
+    if (interpretation.budget_amount != null) payload.budget_amount = interpretation.budget_amount;
     if (interpretation.currency) payload.currency = interpretation.currency;
     if (interpretation.delivery_countries?.length) {
       payload.delivery_countries = interpretation.delivery_countries;
@@ -33,13 +38,18 @@ export default function MissingFieldsPrompt({ missingFields, interpretation, isP
     // Override with user-provided values
     for (const [field, value] of Object.entries(values)) {
       if (!value || String(value).trim() === '') continue;
+      const numericValue = String(value).replace(/[^0-9.]/g, '');
       switch (field) {
-        case 'quantity':
-          payload.quantity = parseInt(value, 10);
+        case 'quantity': {
+          const parsed = parseInt(numericValue, 10);
+          payload.quantity = Number.isNaN(parsed) ? null : parsed;
           break;
-        case 'budget_amount':
-          payload.budget_amount = parseFloat(value);
+        }
+        case 'budget_amount': {
+          const parsed = parseFloat(numericValue);
+          payload.budget_amount = Number.isNaN(parsed) ? null : parsed;
           break;
+        }
         case 'delivery_country':
           payload.delivery_countries = [String(value).trim().toUpperCase()];
           payload.country = String(value).trim().toUpperCase();

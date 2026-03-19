@@ -13,12 +13,15 @@ export default function ProcessingView({ payload, onBack }) {
   const startedRef = useRef(false);
   const [runCount, setRunCount] = useState(0);
   const [appliedOverrides, setAppliedOverrides] = useState([]);
+  const overridesRef = useRef(appliedOverrides);
 
   function runPipeline(pl) {
     setSteps([]);
     setCurrentStep(null);
     setResult(null);
     setError(null);
+    setAppliedOverrides([]);
+    overridesRef.current = [];
 
     processRequestStreaming(pl, (event) => {
       setSteps(prev => [...prev, event]);
@@ -35,7 +38,7 @@ export default function ProcessingView({ payload, onBack }) {
     if (startedRef.current && runCount === 0) return;
     startedRef.current = true;
     runPipeline(currentPayload);
-  }, [runCount]);
+  }, [currentPayload, runCount]);
 
   function handleReprocess(enrichedPayload) {
     // Merge with a request_text if original had one
@@ -55,11 +58,11 @@ export default function ProcessingView({ payload, onBack }) {
     const interp = result?.request_interpretation || {};
     const newPayload = {};
 
-    // Carry forward all existing interpretation fields
+    // Carry forward all existing interpretation fields (use != null to preserve 0 values)
     if (interp.category_l1) newPayload.category_l1 = interp.category_l1;
     if (interp.category_l2) newPayload.category_l2 = interp.category_l2;
-    if (interp.quantity) newPayload.quantity = interp.quantity;
-    if (interp.budget_amount) newPayload.budget_amount = interp.budget_amount;
+    if (interp.quantity != null) newPayload.quantity = interp.quantity;
+    if (interp.budget_amount != null) newPayload.budget_amount = interp.budget_amount;
     if (interp.currency) newPayload.currency = interp.currency;
     if (interp.delivery_countries?.length) {
       newPayload.delivery_countries = interp.delivery_countries;
@@ -88,10 +91,14 @@ export default function ProcessingView({ payload, onBack }) {
       scenario: scenario.scenario,
       title: scenario.title,
     };
-    setAppliedOverrides(prev => [...prev, override]);
+
+    // Use ref to get latest overrides (avoids stale closure)
+    const updated = [...overridesRef.current, override];
+    overridesRef.current = updated;
+    setAppliedOverrides(updated);
 
     // Pass overrides to the backend
-    newPayload.parameter_overrides = [...appliedOverrides, override];
+    newPayload.parameter_overrides = updated;
 
     handleReprocess(newPayload);
   }
@@ -125,7 +132,7 @@ export default function ProcessingView({ payload, onBack }) {
       {missingFields.length > 0 && (
         <MissingFieldsPrompt
           missingFields={missingFields}
-          interpretation={result.request_interpretation}
+          interpretation={result.request_interpretation || {}}
           isPreview={isPreview}
           onReprocess={handleReprocess}
         />

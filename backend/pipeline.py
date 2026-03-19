@@ -986,7 +986,7 @@ def _build_interpretation(req: ProcessRequest, raw: dict | None) -> RequestInter
             required_by = extract_date_fallback(request_text)
         preferred = req.preferred_supplier_mentioned or llm_fields.get("preferred_supplier") or llm_fields.get("text_preferred_supplier")
         delivery = req.delivery_countries or ([req.country] if req.country else
-                   llm_fields.get("delivery_countries", []))
+                   llm_fields.get("delivery_countries") or [])
 
         days_until = None
         if required_by:

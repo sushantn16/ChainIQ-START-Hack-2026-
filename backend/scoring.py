@@ -230,8 +230,15 @@ def score_and_rank_suppliers(
 
         scored.append(entry)
 
-    # Sort by composite score descending
-    scored.sort(key=lambda x: x.composite_score, reverse=True)
+    # Sort: feasible suppliers first (standard/expedited), then infeasible.
+    # Within each group, sort by composite score descending.
+    any_feasible = any(e.lead_time_feasible != "infeasible" for e in scored)
+    scored.sort(
+        key=lambda x: (
+            0 if x.lead_time_feasible != "infeasible" else 1 if any_feasible else 0,
+            -x.composite_score,
+        )
+    )
 
     # Assign ranks
     for i, entry in enumerate(scored):

@@ -78,27 +78,19 @@ def compute_composite_score(
 ) -> float:
     """
     Compute weighted composite score.
-    Default weights: price=0.30, quality=0.25, risk=0.20, esg=0.10, lead=0.05, preferred=0.10
+    Weights: price=0.40, quality=0.30, risk=0.20, lead=0.10 (sum to 1.00).
+    Preferred supplier gets a flat +0.05 additive bonus (breaks even at ~12.5% price premium).
 
-    ESG is a hard filter (handled in supplier_matcher) when esg_requirement=True.
-    Here, ESG weight is only used for soft ranking differentiation.
+    ESG compliance is enforced as a hard filter in supplier_matcher (threshold 65).
+    It is not included in the composite score to avoid double-counting.
     """
     if weights is None:
         weights = {
-            "price": 0.30,
-            "quality": 0.25,
+            "price": 0.40,
+            "quality": 0.30,
             "risk": 0.20,
-            "esg": 0.10,
-            "lead": 0.05,
-            "preferred": 0.10,
+            "lead": 0.10,
         }
-
-    # If ESG not required, redistribute weight to price and quality
-    if not esg_required:
-        esg_weight = weights["esg"]
-        weights = {**weights, "esg": 0}
-        weights["price"] += esg_weight / 2
-        weights["quality"] += esg_weight / 2
 
     # Normalize price (lower = better)
     if all_prices and max(all_prices) > min(all_prices):
@@ -112,17 +104,16 @@ def compute_composite_score(
     lead_scores = {"standard": 1.0, "expedited_only": 0.5, "infeasible": 0.0}
     lead_score = lead_scores.get(lead_time_status, 0.5)
 
-    # Preferred score
-    pref_score = 1.0 if is_preferred else 0.0
-
     score = (
         weights["price"] * price_norm
         + weights["quality"] * (quality_score / 100)
         + weights["risk"] * (1 - risk_score / 100)
-        + weights["esg"] * (esg_score / 100)
         + weights["lead"] * lead_score
-        + weights["preferred"] * pref_score
     )
+
+    # Flat preferred supplier bonus (additive, outside the weighted dimensions)
+    if is_preferred:
+        score += 0.05
 
     return round(score, 4)
 

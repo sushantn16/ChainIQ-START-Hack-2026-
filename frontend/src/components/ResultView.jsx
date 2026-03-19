@@ -40,7 +40,18 @@ export default function ResultView({ result }) {
         )}
       </div>
 
-      {/* Sections */}
+      {/* Supplier Shortlist — primary output, always visible first */}
+      <Section
+        title={`Supplier Shortlist`}
+        badge={r.supplier_shortlist.length || null}
+        badgeColor="blue"
+        expanded={expandedSection === 'recommendation'}
+        onToggle={() => setExpandedSection(expandedSection === 'recommendation' ? '' : 'recommendation')}
+      >
+        <ShortlistPanel shortlist={r.supplier_shortlist} />
+      </Section>
+
+      {/* Supporting sections */}
       <Section
         title="Request Interpretation"
         expanded={expandedSection === 'interpretation'}
@@ -58,18 +69,6 @@ export default function ResultView({ result }) {
       >
         <ValidationPanel validation={r.validation} />
       </Section>
-
-      <Section
-        title={`Supplier Shortlist`}
-        badge={r.supplier_shortlist.length || null}
-        badgeColor="blue"
-        expanded={expandedSection === 'recommendation'}
-        onToggle={() => setExpandedSection(expandedSection === 'recommendation' ? '' : 'recommendation')}
-      >
-        <ShortlistPanel shortlist={r.supplier_shortlist} />
-      </Section>
-
-      {/* Excluded suppliers are visible in the Pipeline Thinking audit trail */}
 
       {r.supplier_discovery?.triggered && (
         <Section

@@ -1,3 +1,5 @@
+import { useState, useEffect, useRef } from 'react'
+
 const STEP_CONFIG = {
   intake:         { label: 'Request Intake',       icon: '1', color: 'blue' },
   extraction:     { label: 'Extraction & Translation', icon: '2', color: 'violet' },
@@ -18,9 +20,23 @@ const STEP_CONFIG = {
 const STEP_ORDER = ['intake', 'extraction', 'validation', 'matching', 'scoring', 'narration', 'discovery', 'policy', 'escalation', 'recommendation', 'narrative', 'what_if', 'audit', 'done'];
 
 export default function PipelineThinking({ steps, currentStep, done }) {
+  const [collapsed, setCollapsed] = useState(false);
+
+  // Auto-collapse when pipeline completes
+  const prevDoneRef = useRef(done);
+  useEffect(() => {
+    if (done && !prevDoneRef.current) {
+      setCollapsed(true);
+    }
+    prevDoneRef.current = done;
+  }, [done]);
+
   return (
     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-      <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+      <button
+        onClick={() => setCollapsed(!collapsed)}
+        className="w-full px-6 py-4 border-b border-slate-100 flex items-center justify-between hover:bg-slate-50 transition-colors"
+      >
         <div className="flex items-center gap-3">
           <h3 className="text-base font-semibold text-slate-900">Pipeline Thinking</h3>
           {!done && (
@@ -35,12 +51,15 @@ export default function PipelineThinking({ steps, currentStep, done }) {
             </span>
           )}
         </div>
-        <span className="text-xs text-slate-400">
-          {steps.length} step{steps.length !== 1 ? 's' : ''} completed
-        </span>
-      </div>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-slate-400">
+            {steps.length} step{steps.length !== 1 ? 's' : ''} completed
+          </span>
+          <span className={`text-slate-400 transition-transform ${collapsed ? '' : 'rotate-180'}`}>▾</span>
+        </div>
+      </button>
 
-      <div className="px-6 py-4">
+      {!collapsed && <div className="px-6 py-4">
         <div className="relative">
           {/* Vertical line */}
           <div className="absolute left-[15px] top-0 bottom-0 w-px bg-slate-200"></div>
@@ -114,7 +133,7 @@ export default function PipelineThinking({ steps, currentStep, done }) {
             })}
           </div>
         </div>
-      </div>
+      </div>}
     </div>
   );
 }

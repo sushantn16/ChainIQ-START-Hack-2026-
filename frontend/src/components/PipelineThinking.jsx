@@ -72,35 +72,35 @@ export default function PipelineThinking({ steps, currentStep, done }) {
   const completedCount = ALL_STEP_KEYS.filter(k => completedSteps.has(k)).length;
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+    <div className="border border-[#e0e0e0] rounded-xl overflow-hidden">
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="w-full px-6 py-4 border-b border-slate-100 flex items-center justify-between hover:bg-slate-50 transition-colors"
+        className="w-full px-6 py-4 bg-[#111] flex items-center justify-between hover:bg-[#1a1a1a] transition-colors"
       >
         <div className="flex items-center gap-3">
-          <h3 className="text-base font-semibold text-slate-900">Agent Pipeline</h3>
+          <h3 className="text-sm font-black uppercase tracking-[1.5px] text-white">Agent Pipeline</h3>
           {!done && (
-            <span className="flex items-center gap-1.5 text-xs text-brand-500 font-medium">
+            <span className="flex items-center gap-1.5 text-xs text-brand-400 font-bold">
               <span className="w-2 h-2 rounded-full bg-brand-500 animate-pulse"></span>
               Processing...
             </span>
           )}
           {done && (
-            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-xs font-medium">
+            <span className="px-2 py-0.5 bg-[#1a7a3c] text-white rounded text-[10px] font-bold uppercase tracking-[1px]">
               Complete
             </span>
           )}
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-slate-400">
+          <span className="text-xs text-[#888] font-mono">
             {completedCount}/13 steps
           </span>
-          <span className={`text-slate-400 transition-transform ${collapsed ? '' : 'rotate-180'}`}>&#9662;</span>
+          <span className={`text-[#888] transition-transform text-xs ${collapsed ? '' : 'rotate-180'}`}>&#9660;</span>
         </div>
       </button>
 
       {!collapsed && (
-        <div className="py-2">
+        <div className="py-2 bg-white">
           {PHASES.map((phase, phaseIdx) => {
             const phaseStepKeys = phase.steps.map(s => s.key);
             const phaseIsActive = phaseStepKeys.includes(currentStep);
@@ -111,19 +111,19 @@ export default function PipelineThinking({ steps, currentStep, done }) {
               <div key={phaseIdx}>
                 {/* Phase header */}
                 <div className={`px-6 py-2 flex items-center gap-2 ${phaseIdx > 0 ? 'mt-1' : ''}`}>
-                  <div className={`h-px flex-1 ${phaseStarted ? 'bg-slate-200' : 'bg-slate-100'}`}></div>
-                  <span className={`text-[11px] font-semibold uppercase tracking-wider ${
-                    phaseIsActive ? 'text-brand-600' : phaseCompleted ? 'text-slate-500' : 'text-slate-300'
+                  <div className={`h-px flex-1 ${phaseStarted ? 'bg-[#e0e0e0]' : 'bg-[#f4f4f4]'}`}></div>
+                  <span className={`text-[10px] font-bold uppercase tracking-[2px] ${
+                    phaseIsActive ? 'text-brand-500' : phaseCompleted ? 'text-[#1a1a1a]' : 'text-[#ccc]'
                   }`}>
                     {phase.label}
                   </span>
-                  <div className={`h-px flex-1 ${phaseStarted ? 'bg-slate-200' : 'bg-slate-100'}`}></div>
+                  <div className={`h-px flex-1 ${phaseStarted ? 'bg-[#e0e0e0]' : 'bg-[#f4f4f4]'}`}></div>
                 </div>
 
                 {/* Steps within this phase */}
                 <div className="px-6">
                   <div className="relative">
-                    <div className="absolute left-[15px] top-0 bottom-0 w-px bg-slate-200"></div>
+                    <div className="absolute left-[15px] top-0 bottom-0 w-px bg-[#e0e0e0]"></div>
 
                     {phase.steps.map((step) => {
                       const stepEntries = steps.filter(s => s.step === step.key);
@@ -141,16 +141,16 @@ export default function PipelineThinking({ steps, currentStep, done }) {
                             isActive
                               ? 'bg-brand-500 text-white ring-4 ring-brand-100 animate-pulse'
                               : isCompleted
-                                ? 'bg-emerald-500 text-white'
-                                : 'bg-slate-100 text-slate-400'
+                                ? 'bg-[#1a1a1a] text-white'
+                                : 'bg-[#f4f4f4] text-[#ccc]'
                           }`}>
                             {isCompleted && !isActive ? '✓' : step.num}
                           </div>
 
                           {/* Step content */}
-                          <div className={`flex-1 min-w-0 pt-1 transition-opacity duration-300 ${isPending ? 'opacity-40' : 'opacity-100'}`}>
-                            <p className={`text-sm font-medium ${
-                              isActive ? 'text-brand-700' : isCompleted ? 'text-slate-900' : 'text-slate-400'
+                          <div className={`flex-1 min-w-0 pt-1 transition-opacity duration-300 ${isPending ? 'opacity-30' : 'opacity-100'}`}>
+                            <p className={`text-xs font-bold uppercase tracking-wide ${
+                              isActive ? 'text-brand-500' : isCompleted ? 'text-[#1a1a1a]' : 'text-[#ccc]'
                             }`}>
                               {step.label}
                             </p>
@@ -160,8 +160,8 @@ export default function PipelineThinking({ steps, currentStep, done }) {
                                 key={i}
                                 className={`text-xs mt-0.5 leading-relaxed ${
                                   isActive && i === stepEntries.length - 1
-                                    ? 'text-brand-500'
-                                    : 'text-slate-500'
+                                    ? 'text-brand-400'
+                                    : 'text-[#999]'
                                 }`}
                               >
                                 {entry.detail}
@@ -170,9 +170,9 @@ export default function PipelineThinking({ steps, currentStep, done }) {
 
                             {isActive && stepEntries.length > 0 && (
                               <div className="mt-1 flex items-center gap-1">
-                                <span className="w-1 h-1 bg-brand-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                                <span className="w-1 h-1 bg-brand-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                                <span className="w-1 h-1 bg-brand-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                                <span className="w-1.5 h-1.5 bg-brand-500 animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                                <span className="w-1.5 h-1.5 bg-brand-500 animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                                <span className="w-1.5 h-1.5 bg-brand-500 animate-bounce" style={{ animationDelay: '300ms' }}></span>
                               </div>
                             )}
 
@@ -202,7 +202,7 @@ export default function PipelineThinking({ steps, currentStep, done }) {
 
 function DataCard({ children, className = '' }) {
   return (
-    <div className={`bg-slate-50 rounded-lg border border-slate-100 p-3 text-xs ${className}`}>
+    <div className={`bg-[#f4f4f4] border border-[#e0e0e0] rounded-lg p-3 text-xs ${className}`}>
       {children}
     </div>
   );
@@ -212,24 +212,24 @@ function KV({ label, value, mono = false }) {
   if (value === null || value === undefined || value === '') return null;
   return (
     <div className="flex justify-between gap-2 py-0.5">
-      <span className="text-slate-500">{label}</span>
-      <span className={`text-slate-800 font-medium text-right ${mono ? 'font-mono' : ''}`}>{value}</span>
+      <span className="text-[#999]">{label}</span>
+      <span className={`text-[#1a1a1a] font-medium text-right ${mono ? 'font-mono' : ''}`}>{value}</span>
     </div>
   );
 }
 
 function Badge({ text, color = 'slate' }) {
   const colors = {
-    emerald: 'bg-emerald-100 text-emerald-700',
-    red: 'bg-red-100 text-red-700',
-    amber: 'bg-amber-100 text-amber-700',
+    emerald: 'bg-[#d1fae5] text-[#1a7a3c]',
+    red: 'bg-[#fde8e8] text-brand-500',
+    amber: 'bg-[#fff8e1] text-[#856400]',
     blue: 'bg-blue-100 text-blue-700',
     teal: 'bg-teal-100 text-teal-700',
     purple: 'bg-purple-100 text-purple-700',
-    slate: 'bg-slate-100 text-slate-600',
+    slate: 'bg-[#f4f4f4] text-[#666]',
   };
   return (
-    <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium ${colors[color] || colors.slate}`}>
+    <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${colors[color] || colors.slate}`}>
       {text}
     </span>
   );
@@ -242,7 +242,7 @@ function IntakeData({ data }) {
   if (data.type === 'free_text') {
     return (
       <DataCard>
-        <p className="text-slate-600 italic">"{data.request_text}"</p>
+        <p className="text-[#555] italic">"{data.request_text}"</p>
       </DataCard>
     );
   }
@@ -275,17 +275,17 @@ function ExtractionData({ data }) {
         <KV label="Confidence" value={data.confidence ? `${(data.confidence * 100).toFixed(0)}%` : null} />
       </div>
       {data.translated_text && (
-        <div className="mt-2 pt-2 border-t border-slate-200">
-          <p className="text-slate-500 mb-0.5">Translation:</p>
-          <p className="text-slate-700 italic">"{data.translated_text}"</p>
+        <div className="mt-2 pt-2 border-t border-[#e0e0e0]">
+          <p className="text-[#999] mb-0.5">Translation:</p>
+          <p className="text-[#333] italic">"{data.translated_text}"</p>
         </div>
       )}
       {data.contradictions?.length > 0 && (
-        <div className="mt-2 pt-2 border-t border-slate-200 space-y-1">
+        <div className="mt-2 pt-2 border-t border-[#e0e0e0] space-y-1">
           {data.contradictions.map((c, i) => (
             <div key={i} className="flex items-start gap-1">
               <Badge text="Contradiction" color="red" />
-              <span className="text-slate-600">{c}</span>
+              <span className="text-[#555]">{c}</span>
             </div>
           ))}
         </div>
@@ -307,8 +307,8 @@ function ValidationData({ data }) {
     return (
       <DataCard>
         <div className="flex items-center gap-1.5">
-          <span className="text-emerald-600">&#10003;</span>
-          <span className="text-emerald-700 font-medium">All checks passed</span>
+          <span className="text-[#1a7a3c]">&#10003;</span>
+          <span className="text-[#1a7a3c] font-bold">All checks passed</span>
         </div>
       </DataCard>
     );
@@ -317,12 +317,12 @@ function ValidationData({ data }) {
     <DataCard>
       <div className="space-y-1.5">
         {hasAdaptations && (
-          <div className="space-y-1 pb-1.5 mb-1.5 border-b border-slate-100">
+          <div className="space-y-1 pb-1.5 mb-1.5 border-b border-[#e0e0e0]">
             {data.adaptations.map((a, i) => (
               <div key={i} className="flex items-start gap-2">
                 <Badge text="auto-adapted" color="blue" />
                 <div>
-                  <span className="text-slate-600">{a.description}</span>
+                  <span className="text-[#555]">{a.description}</span>
                   <p className="text-brand-500 text-[11px]">{a.action}</p>
                 </div>
               </div>
@@ -336,8 +336,8 @@ function ValidationData({ data }) {
               color={issue.severity === 'critical' ? 'red' : issue.severity === 'high' ? 'amber' : issue.severity === 'medium' ? 'amber' : 'slate'}
             />
             <div>
-              <span className="text-slate-700 font-medium">{issue.type.replace(/_/g, ' ')}</span>
-              <p className="text-slate-500 text-[11px]">{issue.description}</p>
+              <span className="text-[#333] font-bold">{issue.type.replace(/_/g, ' ')}</span>
+              <p className="text-[#999] text-[11px]">{issue.description}</p>
               <p className="text-brand-500 text-[11px]">{issue.action}</p>
             </div>
           </div>
@@ -357,12 +357,12 @@ function MatchingData({ data }) {
       {data.candidates?.length > 0 && (
         <div className="space-y-1">
           {data.candidates.slice(0, 5).map((c, i) => (
-            <div key={i} className="flex items-center justify-between py-0.5 border-b border-slate-100 last:border-0">
+            <div key={i} className="flex items-center justify-between py-0.5 border-b border-[#e0e0e0] last:border-0">
               <div className="flex items-center gap-2">
-                <span className="text-slate-700 font-medium">{c.supplier_name}</span>
+                <span className="text-[#333] font-bold">{c.supplier_name}</span>
                 {c.preferred && <Badge text="Preferred" color="blue" />}
               </div>
-              <div className="flex gap-2 text-[10px] text-slate-500">
+              <div className="flex gap-2 text-[10px] text-[#999] font-mono">
                 <span>Q:{c.quality_score}</span>
                 <span>R:{c.risk_score}</span>
                 <span>E:{c.esg_score}</span>
@@ -372,10 +372,10 @@ function MatchingData({ data }) {
         </div>
       )}
       {data.excluded?.length > 0 && (
-        <div className="mt-2 pt-2 border-t border-slate-200">
-          <p className="text-slate-500 mb-1">Excluded:</p>
+        <div className="mt-2 pt-2 border-t border-[#e0e0e0]">
+          <p className="text-[#999] mb-1">Excluded:</p>
           {data.excluded.map((e, i) => (
-            <div key={i} className="flex items-center justify-between py-0.5 text-slate-400">
+            <div key={i} className="flex items-center justify-between py-0.5 text-[#999]">
               <span>{e.supplier_name}</span>
               <Badge text={e.reason} color="red" />
             </div>
@@ -390,41 +390,41 @@ function ScoringData({ data }) {
   if (!data.shortlist?.length) {
     return (
       <DataCard>
-        <span className="text-slate-500">No suppliers scored — discovery triggered to find alternatives</span>
+        <span className="text-[#999]">No suppliers scored — discovery triggered to find alternatives</span>
       </DataCard>
     );
   }
   const isUnitPricing = data.unit_pricing_mode;
   return (
-    <DataCard className="p-0 overflow-hidden">
+    <DataCard className="!p-0 overflow-hidden">
       {isUnitPricing && (
-        <div className="px-2 py-1.5 bg-brand-50 text-brand-700 text-[11px] flex items-center gap-1.5">
+        <div className="px-3 py-2 bg-brand-50 text-brand-700 text-[11px] flex items-center gap-1.5">
           <Badge text="auto-adapted" color="blue" />
           <span>No quantity specified — showing per-unit pricing. Provide quantity for total costs.</span>
         </div>
       )}
       <table className="w-full text-[11px]">
         <thead>
-          <tr className="bg-slate-100 text-slate-600">
-            <th className="text-left px-2 py-1.5 font-medium">#</th>
-            <th className="text-left px-2 py-1.5 font-medium">Supplier</th>
-            <th className="text-right px-2 py-1.5 font-medium">{isUnitPricing ? 'Unit Price' : 'Price'}</th>
-            <th className="text-right px-2 py-1.5 font-medium">Fit</th>
-            <th className="text-center px-2 py-1.5 font-medium">Tags</th>
+          <tr className="bg-[#1a1a1a] text-white">
+            <th className="text-left px-2 py-1.5 font-bold">#</th>
+            <th className="text-left px-2 py-1.5 font-bold">Supplier</th>
+            <th className="text-right px-2 py-1.5 font-bold">{isUnitPricing ? 'Unit Price' : 'Price'}</th>
+            <th className="text-right px-2 py-1.5 font-bold">Fit</th>
+            <th className="text-center px-2 py-1.5 font-bold">Tags</th>
           </tr>
         </thead>
         <tbody>
           {data.shortlist.map((s, i) => (
-            <tr key={i} className={`border-t border-slate-100 ${i === 0 ? 'bg-emerald-50/50' : ''}`}>
-              <td className="px-2 py-1.5 font-mono text-slate-500">{s.rank}</td>
-              <td className="px-2 py-1.5 text-slate-800 font-medium">{s.supplier_name}</td>
-              <td className="px-2 py-1.5 text-right font-mono text-slate-700">
+            <tr key={i} className={`border-t border-[#e0e0e0] ${i === 0 ? 'bg-[#d1fae5]/40' : ''}`}>
+              <td className="px-2 py-1.5 font-mono text-[#999]">{s.rank}</td>
+              <td className="px-2 py-1.5 text-[#1a1a1a] font-bold">{s.supplier_name}</td>
+              <td className="px-2 py-1.5 text-right font-mono text-[#333]">
                 {s.currency} {isUnitPricing
                   ? Number(s.unit_price).toLocaleString() + '/unit'
                   : Number(s.total_price).toLocaleString()
                 }
               </td>
-              <td className="px-2 py-1.5 text-right font-mono text-slate-700">
+              <td className="px-2 py-1.5 text-right font-mono text-[#333]">
                 {(Number(s.composite_score) * 100).toFixed(1)}%
               </td>
               <td className="px-2 py-1.5 text-center">
@@ -449,8 +449,8 @@ function NarrationData({ data }) {
       <div className="space-y-2">
         {data.notes.slice(0, 3).map((n, i) => (
           <div key={i}>
-            <p className="text-slate-700 font-medium">{n.supplier_name}</p>
-            <p className="text-slate-500 mt-0.5 leading-relaxed">{n.note}</p>
+            <p className="text-[#333] font-bold">{n.supplier_name}</p>
+            <p className="text-[#999] mt-0.5 leading-relaxed">{n.note}</p>
           </div>
         ))}
       </div>
@@ -463,8 +463,8 @@ function DiscoveryData({ data }) {
     return (
       <DataCard>
         <div className="flex items-center gap-1.5">
-          <span className="text-slate-400">&#8212;</span>
-          <span className="text-slate-500">Sufficient supplier coverage — no discovery needed</span>
+          <span className="text-[#999]">&#8212;</span>
+          <span className="text-[#999]">Sufficient supplier coverage — no discovery needed</span>
         </div>
       </DataCard>
     );
@@ -473,17 +473,17 @@ function DiscoveryData({ data }) {
     <DataCard>
       <div className="flex items-center gap-2 mb-2">
         <Badge text={data.trigger_reason} color="teal" />
-        <span className="text-slate-500">{data.suppliers.length} discovered</span>
+        <span className="text-[#999]">{data.suppliers.length} discovered</span>
       </div>
       <div className="space-y-1.5">
         {data.suppliers.map((s, i) => (
-          <div key={i} className="flex items-center justify-between py-0.5 border-b border-slate-100 last:border-0">
+          <div key={i} className="flex items-center justify-between py-0.5 border-b border-[#e0e0e0] last:border-0">
             <div>
-              <span className="text-slate-700 font-medium">{s.name}</span>
-              <span className="text-slate-400 ml-2 text-[10px]">via {s.source}</span>
+              <span className="text-[#333] font-bold">{s.name}</span>
+              <span className="text-[#999] ml-2 text-[10px]">via {s.source}</span>
             </div>
             {s.estimated_capability && (
-              <span className="text-slate-500 text-[10px]">{s.estimated_capability}</span>
+              <span className="text-[#999] text-[10px]">{s.estimated_capability}</span>
             )}
           </div>
         ))}
@@ -496,17 +496,17 @@ function PolicyData({ data }) {
   return (
     <DataCard>
       {data.approval_threshold && (
-        <div className="pb-1.5 mb-1.5 border-b border-slate-200">
+        <div className="pb-1.5 mb-1.5 border-b border-[#e0e0e0]">
           <KV label="Approval Rule" value={data.approval_threshold.rule} />
           <KV label="Quotes Required" value={data.approval_threshold.quotes_required} />
           <KV label="Basis" value={data.approval_threshold.basis} />
         </div>
       )}
       {data.preferred_supplier && (
-        <div className="pb-1.5 mb-1.5 border-b border-slate-200">
+        <div className="pb-1.5 mb-1.5 border-b border-[#e0e0e0]">
           <div className="flex items-center gap-2">
-            <span className="text-slate-500">Preferred:</span>
-            <span className="text-slate-800 font-medium">{data.preferred_supplier.supplier || 'None'}</span>
+            <span className="text-[#999]">Preferred:</span>
+            <span className="text-[#1a1a1a] font-bold">{data.preferred_supplier.supplier || 'None'}</span>
             <Badge
               text={data.preferred_supplier.status}
               color={data.preferred_supplier.status === 'confirmed' ? 'emerald' : data.preferred_supplier.status === 'not_matched' ? 'amber' : 'slate'}
@@ -516,13 +516,13 @@ function PolicyData({ data }) {
       )}
       <div className="flex gap-4">
         <div>
-          <span className="text-slate-500">Category rules: </span>
-          <span className="font-medium text-slate-700">{data.category_rules?.length || 0}</span>
+          <span className="text-[#999]">Category rules: </span>
+          <span className="font-bold text-[#333]">{data.category_rules?.length || 0}</span>
           {data.category_rules?.some(r => !r.applies) && <Badge text="Non-compliant" color="red" />}
         </div>
         <div>
-          <span className="text-slate-500">Geo rules: </span>
-          <span className="font-medium text-slate-700">{data.geography_rules?.length || 0}</span>
+          <span className="text-[#999]">Geo rules: </span>
+          <span className="font-bold text-[#333]">{data.geography_rules?.length || 0}</span>
           {data.geography_rules?.some(r => !r.applies) && <Badge text="Non-compliant" color="red" />}
         </div>
       </div>
@@ -535,8 +535,8 @@ function EscalationData({ data }) {
     return (
       <DataCard>
         <div className="flex items-center gap-1.5">
-          <span className="text-emerald-600">&#10003;</span>
-          <span className="text-emerald-700 font-medium">No escalations — ready for approval</span>
+          <span className="text-[#1a7a3c]">&#10003;</span>
+          <span className="text-[#1a7a3c] font-bold">No escalations — ready for approval</span>
         </div>
       </DataCard>
     );
@@ -550,19 +550,19 @@ function EscalationData({ data }) {
           <div key={`b-${i}`} className="flex items-start gap-2">
             <Badge text="COMPLIANCE" color="red" />
             <div>
-              <span className="text-slate-700 font-medium">{e.rule}</span>
-              <p className="text-slate-500 text-[11px]">{e.trigger}</p>
-              <p className="text-red-500 text-[10px]">Requires: {e.escalate_to}</p>
+              <span className="text-[#333] font-bold">{e.rule}</span>
+              <p className="text-[#999] text-[11px]">{e.trigger}</p>
+              <p className="text-brand-500 text-[10px]">Requires: {e.escalate_to}</p>
             </div>
           </div>
         ))}
         {advisories.map((e, i) => (
           <div key={`a-${i}`} className="flex items-start gap-2">
-            <Badge text="ADVISORY" color="blue" />
+            <Badge text="ADVISORY" color="amber" />
             <div>
-              <span className="text-slate-700 font-medium">{e.rule}</span>
-              <p className="text-slate-500 text-[11px]">{e.trigger}</p>
-              <p className="text-brand-500 text-[10px]">FYI: {e.escalate_to}</p>
+              <span className="text-[#333] font-bold">{e.rule}</span>
+              <p className="text-[#999] text-[11px]">{e.trigger}</p>
+              <p className="text-[#856400] text-[10px]">FYI: {e.escalate_to}</p>
             </div>
           </div>
         ))}
@@ -585,14 +585,14 @@ function NarrativeData({ data }) {
           color={statusColors[data.status] || 'slate'}
         />
         {data.chosen_supplier && (
-          <span className="text-slate-700 font-medium">{data.chosen_supplier}</span>
+          <span className="text-[#333] font-bold">{data.chosen_supplier}</span>
         )}
         {data.total_price && (
-          <span className="text-slate-500 font-mono">{data.currency} {Number(data.total_price).toLocaleString()}</span>
+          <span className="text-[#999] font-mono">{data.currency} {Number(data.total_price).toLocaleString()}</span>
         )}
       </div>
       {data.narrative && (
-        <p className="text-slate-600 leading-relaxed">{data.narrative}</p>
+        <p className="text-[#555] leading-relaxed">{data.narrative}</p>
       )}
     </DataCard>
   );
@@ -602,7 +602,7 @@ function WhatIfData({ data }) {
   if (!data.scenarios?.length) {
     return (
       <DataCard>
-        <span className="text-slate-500">Current parameters are optimal</span>
+        <span className="text-[#999]">Current parameters are optimal</span>
       </DataCard>
     );
   }
@@ -610,17 +610,17 @@ function WhatIfData({ data }) {
     <DataCard>
       <div className="space-y-2">
         {data.scenarios.map((s, i) => (
-          <div key={i} className="pb-1.5 border-b border-slate-100 last:border-0 last:pb-0">
+          <div key={i} className="pb-1.5 border-b border-[#e0e0e0] last:border-0 last:pb-0">
             <div className="flex items-center gap-2">
               <Badge text={s.scenario?.replace(/_/g, ' ')} color="blue" />
-              <span className="text-slate-700 font-medium">{s.title}</span>
+              <span className="text-[#333] font-bold">{s.title}</span>
             </div>
-            <p className="text-slate-500 text-[11px] mt-0.5">{s.description}</p>
+            <p className="text-[#999] text-[11px] mt-0.5">{s.description}</p>
             {s.current_value && s.suggested_value && (
               <div className="flex items-center gap-1 mt-0.5 text-[10px]">
-                <span className="text-slate-400">{s.current_value}</span>
-                <span className="text-slate-300">&rarr;</span>
-                <span className="text-brand-500 font-medium">{s.suggested_value}</span>
+                <span className="text-[#999]">{s.current_value}</span>
+                <span className="text-[#ccc]">&rarr;</span>
+                <span className="text-brand-500 font-bold">{s.suggested_value}</span>
               </div>
             )}
           </div>
@@ -637,9 +637,9 @@ function AuditData({ data }) {
       <KV label="Suppliers Evaluated" value={data.suppliers_evaluated} />
       <KV label="Pricing Tier" value={data.pricing_tier} />
       {data.historical_award && (
-        <div className="mt-1.5 pt-1.5 border-t border-slate-200">
-          <p className="text-slate-500 mb-0.5">Historical:</p>
-          <p className="text-slate-600">{data.historical_award}</p>
+        <div className="mt-1.5 pt-1.5 border-t border-[#e0e0e0]">
+          <p className="text-[#999] mb-0.5">Historical:</p>
+          <p className="text-[#555]">{data.historical_award}</p>
         </div>
       )}
       {data.policies_checked?.length > 0 && (

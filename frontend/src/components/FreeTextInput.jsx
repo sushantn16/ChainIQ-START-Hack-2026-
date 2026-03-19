@@ -18,48 +18,54 @@ export default function FreeTextInput({ onProcess }) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
-        <h2 className="text-2xl font-semibold text-slate-900">New Request</h2>
-        <p className="text-slate-500 mt-1">
+        <p className="text-xs font-bold uppercase tracking-[3px] text-brand-500 mb-2">New Request</p>
+        <h2 className="text-3xl font-black uppercase tracking-tight text-[#1a1a1a]">Free-Text Input</h2>
+        <p className="text-sm text-[#999] mt-1 max-w-xl">
           Type a purchase request in any language — the AI will extract, classify, and evaluate it
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
-          <label className="block text-sm font-medium text-slate-700 mb-2">
-            Describe your procurement need
-          </label>
-          <textarea
-            value={text}
-            onChange={e => setText(e.target.value)}
-            rows={5}
-            placeholder="e.g., We need 50 laptops for our Berlin office, budget around 75000 EUR, needed by June 2026..."
-            className="w-full px-4 py-3 border border-slate-300 rounded-lg text-base resize-none focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
-          />
-
-          <div className="mt-4 flex justify-end">
-            <button
-              type="submit"
-              disabled={!text.trim()}
-              className="px-6 py-2.5 bg-brand-500 text-white rounded-lg font-medium hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              Process Request
-            </button>
+      <form onSubmit={handleSubmit}>
+        <div className="border border-[#e0e0e0] rounded-xl overflow-hidden">
+          <div className="bg-[#f4f4f4] px-6 py-4 border-b border-[#e0e0e0]">
+            <label className="text-xs font-bold uppercase tracking-[2px] text-[#666]">
+              Describe your procurement need
+            </label>
+          </div>
+          <div className="p-6 bg-white">
+            <textarea
+              value={text}
+              onChange={e => setText(e.target.value)}
+              rows={5}
+              placeholder="e.g., We need 50 laptops for our Berlin office, budget around 75000 EUR, needed by June 2026..."
+              className="w-full px-4 py-3 border border-[#e0e0e0] rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent font-[inherit]"
+            />
+            <div className="mt-4 flex justify-end">
+              <button
+                type="submit"
+                disabled={!text.trim()}
+                className="px-6 py-2.5 bg-brand-500 text-white text-xs font-bold uppercase tracking-[1px] rounded-lg hover:bg-brand-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Process Request
+              </button>
+            </div>
           </div>
         </div>
       </form>
 
       {/* Example Prompts */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6">
-        <h3 className="text-sm font-medium text-slate-700 mb-3">Try an example</h3>
-        <div className="space-y-2">
+      <div className="border border-[#e0e0e0] rounded-xl overflow-hidden">
+        <div className="bg-[#f4f4f4] px-6 py-4 border-b border-[#e0e0e0]">
+          <h3 className="text-xs font-bold uppercase tracking-[2px] text-[#666]">Try an example</h3>
+        </div>
+        <div className="divide-y divide-[#e0e0e0] bg-white">
           {EXAMPLES.map((ex, i) => (
             <button
               key={i}
               onClick={() => setText(ex)}
-              className="w-full text-left px-4 py-3 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-brand-50 hover:border-brand-200 hover:text-brand-700 transition-colors"
+              className="w-full text-left px-6 py-4 text-sm text-[#555] hover:bg-[#f4f4f4] hover:text-[#1a1a1a] transition-colors"
             >
               {ex}
             </button>

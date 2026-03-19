@@ -110,14 +110,14 @@ export default function ProcessingView({ payload, onBack }) {
     <div className="space-y-4">
       <button
         onClick={onBack}
-        className="text-sm text-brand-500 hover:text-brand-700 flex items-center gap-1"
+        className="text-xs font-bold uppercase tracking-[1px] text-[#999] hover:text-[#1a1a1a] flex items-center gap-1 transition-colors"
       >
         <span>&larr;</span> Back
       </button>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-          <p className="text-red-700 font-medium">Error: {error}</p>
+        <div className="bg-[#fde8e8] border border-brand-200 rounded-xl p-5">
+          <p className="text-brand-500 font-bold text-sm">Error: {error}</p>
         </div>
       )}
 
@@ -142,13 +142,12 @@ export default function ProcessingView({ payload, onBack }) {
       {result && (
         <div className="mt-6">
           <div className="flex items-center gap-2 mb-4">
-            <div className="h-px flex-1 bg-slate-200"></div>
-            <span className="text-sm font-medium text-slate-500 px-2">
+            <div className="h-px flex-1 bg-[#e0e0e0]"></div>
+            <span className="text-[10px] font-bold uppercase tracking-[2px] text-[#999] px-2">
               Results
             </span>
-            <div className="h-px flex-1 bg-slate-200"></div>
+            <div className="h-px flex-1 bg-[#e0e0e0]"></div>
           </div>
-          {/* Preview banner removed — results are always shown as final */}
           <ResultView
             result={appliedOverrides.length > 0
               ? { ...result, audit_trail: { ...result.audit_trail, parameter_overrides: [...(result.audit_trail?.parameter_overrides || []), ...appliedOverrides] } }

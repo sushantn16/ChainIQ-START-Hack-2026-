@@ -111,11 +111,21 @@ class RiskComposite(BaseModel):
     inputs: dict = {}
 
 
+class HistoricalPerformance(BaseModel):
+    category_wins: int = 0
+    category_bids: int = 0
+    avg_savings_pct: float = 0.0
+    avg_lead_time_days: float = 0.0
+    escalation_rate: float = 0.0
+    experience_score: float = 0.0  # 0-1 normalized score used in composite
+
+
 class SupplierShortlistEntry(BaseModel):
     rank: int
     supplier_id: str
     supplier_name: str
-    preferred: bool = False
+    preferred: bool = False       # on policy preferred list
+    user_preferred: bool = False  # user specifically requested this supplier
     incumbent: bool = False
     pricing_tier_applied: str = ""
     unit_price: float = 0.0
@@ -128,6 +138,7 @@ class SupplierShortlistEntry(BaseModel):
     quality_score: int = 0
     risk_score: int = 0
     risk_composite: Optional[RiskComposite] = None
+    historical_performance: Optional[HistoricalPerformance] = None
     esg_score: int = 0
     policy_compliant: bool = True
     covers_delivery_country: bool = True

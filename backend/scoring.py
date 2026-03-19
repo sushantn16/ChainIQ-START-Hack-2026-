@@ -5,7 +5,7 @@ Select pricing tiers, calculate costs, compute weighted composite scores, rank s
 
 from backend.data_loader import DataStore
 from backend.supplier_matcher import get_region_for_country
-from backend.models import SupplierShortlistEntry, RiskComposite
+from backend.models import SupplierShortlistEntry, RiskComposite, HistoricalPerformance
 from backend.risk_scoring import compute_risk_composite
 
 
@@ -66,6 +66,63 @@ def calculate_lead_time_feasibility(
     return "infeasible"
 
 
+def compute_historical_performance(
+    supplier_id: str,
+    category_l1: str,
+    category_l2: str,
+    historical_awards: list[dict],
+) -> HistoricalPerformance:
+    """Compute historical performance metrics for a supplier in a specific category.
+
+    Experience score (0-1) is based on:
+    - Category wins (0-0.4): more wins = more proven
+    - Avg savings (0-0.3): higher historical savings = better value
+    - Low escalation rate (0-0.3): fewer past escalations = smoother process
+    """
+    # All bids by this supplier in this category
+    cat_bids = [
+        a for a in historical_awards
+        if a["supplier_id"] == supplier_id
+        and a["category_l1"] == category_l1
+        and a["category_l2"] == category_l2
+    ]
+
+    if not cat_bids:
+        return HistoricalPerformance()
+
+    wins = [a for a in cat_bids if a["awarded"]]
+    escalated = [a for a in cat_bids if a["escalation_required"]]
+
+    cat_wins = len(wins)
+    cat_bids_count = len(cat_bids)
+    esc_rate = len(escalated) / cat_bids_count if cat_bids_count > 0 else 0
+
+    savings = [a["savings_pct"] for a in wins if a.get("savings_pct")]
+    avg_savings = sum(savings) / len(savings) if savings else 0
+
+    lead_times = [a["lead_time_days"] for a in wins if a.get("lead_time_days")]
+    avg_lead = sum(lead_times) / len(lead_times) if lead_times else 0
+
+    # Experience score components
+    # Wins: 1 win = 0.15, 3+ = 0.30, 5+ = 0.40 (diminishing returns)
+    win_score = min(0.4, cat_wins * 0.08)
+    # Savings: 5% avg savings = 0.15, 8%+ = 0.30
+    savings_score = min(0.3, avg_savings * 0.04)
+    # Low escalation: 0% escalation = 0.30, 50%+ = 0
+    esc_score = max(0, 0.3 * (1 - esc_rate * 2))
+
+    experience_score = round(win_score + savings_score + esc_score, 4)
+
+    return HistoricalPerformance(
+        category_wins=cat_wins,
+        category_bids=cat_bids_count,
+        avg_savings_pct=round(avg_savings, 1),
+        avg_lead_time_days=round(avg_lead, 1),
+        escalation_rate=round(esc_rate, 2),
+        experience_score=experience_score,
+    )
+
+
 def compute_composite_score(
     total_price: float,
     all_prices: list[float],
@@ -73,12 +130,14 @@ def compute_composite_score(
     risk_total: int,
     lead_time_status: str,
     is_preferred: bool,
+    experience_score: float = 0.0,
     weights: dict | None = None,
 ) -> float:
     """
     Compute weighted composite score.
     Weights: price=0.35, quality=0.35, risk=0.20, lead=0.10 (sum to 1.00).
     Preferred supplier gets a flat +0.10 additive bonus.
+    Historical experience adds up to +0.05 bonus (experience_score * 0.05).
 
     risk_total is the composite risk score (0-100) from risk_scoring module.
     """
@@ -112,6 +171,9 @@ def compute_composite_score(
     # Flat preferred supplier bonus (additive, outside the weighted dimensions)
     if is_preferred:
         score += 0.10
+
+    # Historical experience bonus (up to +0.05 for proven category track record)
+    score += experience_score * 0.05
 
     return round(score, 4)
 
@@ -172,6 +234,14 @@ def score_and_rank_suppliers(
             historical_awards=store.historical_awards,
         )
 
+        # Compute historical performance
+        hist_perf = compute_historical_performance(
+            supplier_id=sup["supplier_id"],
+            category_l1=category_l1,
+            category_l2=category_l2,
+            historical_awards=store.historical_awards,
+        )
+
         price_data.append({
             "supplier": sup,
             "tier": tier,
@@ -180,6 +250,7 @@ def score_and_rank_suppliers(
             "lead_status": lead_status,
             "tier_label": tier_label,
             "risk_composite": risk_comp,
+            "historical_performance": hist_perf,
         })
 
     # Second pass: compute composite scores
@@ -187,8 +258,11 @@ def score_and_rank_suppliers(
         sup = pd["supplier"]
         tier = pd["tier"]
         risk_comp = pd["risk_composite"]
+        hist_perf = pd["historical_performance"]
 
-        is_preferred = sup.get("preferred_supplier", False) or sup["supplier_name"] == preferred_supplier_name
+        is_on_policy_list = sup.get("preferred_supplier", False)
+        is_user_preferred = sup["supplier_name"] == preferred_supplier_name
+        is_preferred = is_on_policy_list or is_user_preferred
         is_incumbent = sup["supplier_name"] == incumbent_supplier_name
 
         score = compute_composite_score(
@@ -198,13 +272,15 @@ def score_and_rank_suppliers(
             risk_total=risk_comp["total"],
             lead_time_status=pd["lead_status"],
             is_preferred=is_preferred,
+            experience_score=hist_perf.experience_score,
         )
 
         entry = SupplierShortlistEntry(
             rank=0,  # assigned after sorting
             supplier_id=sup["supplier_id"],
             supplier_name=sup["supplier_name"],
-            preferred=is_preferred,
+            preferred=is_on_policy_list,
+            user_preferred=is_user_preferred,
             incumbent=is_incumbent,
             pricing_tier_applied=pd["tier_label"],
             unit_price=tier["unit_price"],
@@ -220,6 +296,7 @@ def score_and_rank_suppliers(
                 k: risk_comp[k] for k in
                 ["country_risk", "delivery_risk", "baseline_risk", "total", "tier", "flags", "inputs"]
             }),
+            historical_performance=hist_perf,
             esg_score=sup["esg_score"],
             lead_time_feasible=pd["lead_status"],
             composite_score=score,

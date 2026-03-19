@@ -245,7 +245,8 @@ function ShortlistPanel({ shortlist }) {
                   {s.rank}
                 </span>
                 <span className="text-base font-semibold text-slate-900">{s.supplier_name}</span>
-                {s.preferred && <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-xs font-medium">Preferred</span>}
+                {s.user_preferred && <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs font-medium">Your Preferred</span>}
+                {s.preferred && <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-xs font-medium">Preferred List</span>}
                 {s.incumbent && <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium">Incumbent</span>}
               </div>
               <p className="text-sm text-slate-500 mt-1 font-mono">{s.supplier_id}</p>
@@ -280,10 +281,13 @@ function ShortlistPanel({ shortlist }) {
             </div>
           </div>
 
-          {/* Fit Score Breakdown + Risk Composite */}
+          {/* Fit Score Breakdown + Risk Composite + Historical Performance */}
           <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2">
             <FitScoreDetail supplier={s} allSuppliers={shortlist} />
             {s.risk_composite && <RiskCompositeDetail rc={s.risk_composite} />}
+            {s.historical_performance && s.historical_performance.category_bids > 0 && (
+              <HistoricalPerformanceDetail hp={s.historical_performance} />
+            )}
           </div>
 
           {/* Recommendation Note */}
@@ -338,7 +342,8 @@ function FitScoreDetail({ supplier: s, allSuppliers }) {
         <p className="text-xs font-medium text-slate-600">Fit Score Breakdown</p>
         <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700">
           {(s.composite_score * 100).toFixed(1)}%
-          {s.preferred && ' +10% preferred'}
+          {(s.preferred || s.user_preferred) && ' +10% preferred'}
+          {s.historical_performance?.experience_score > 0 && ` +${(s.historical_performance.experience_score * 5).toFixed(1)}% exp`}
         </span>
       </div>
       <div className="space-y-1.5">
@@ -413,6 +418,47 @@ function RiskCompositeDetail({ rc }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function HistoricalPerformanceDetail({ hp }) {
+  const winRate = hp.category_bids > 0 ? ((hp.category_wins / hp.category_bids) * 100).toFixed(0) : 0;
+  return (
+    <div className="p-3 bg-slate-50 rounded border border-slate-100">
+      <div className="flex items-center gap-2 mb-2">
+        <p className="text-xs font-medium text-slate-600">Historical Performance</p>
+        {hp.experience_score > 0.5 && (
+          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-700">Proven</span>
+        )}
+      </div>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+        <div>
+          <p className="text-[10px] text-slate-400">Category Wins</p>
+          <p className="text-xs font-medium text-slate-700">{hp.category_wins} / {hp.category_bids} bids ({winRate}%)</p>
+        </div>
+        <div>
+          <p className="text-[10px] text-slate-400">Avg Savings</p>
+          <p className="text-xs font-medium text-slate-700">{hp.avg_savings_pct}%</p>
+        </div>
+        <div>
+          <p className="text-[10px] text-slate-400">Avg Lead Time</p>
+          <p className="text-xs font-medium text-slate-700">{hp.avg_lead_time_days} days</p>
+        </div>
+        <div>
+          <p className="text-[10px] text-slate-400">Escalation Rate</p>
+          <p className={`text-xs font-medium ${hp.escalation_rate > 0.3 ? 'text-red-700' : hp.escalation_rate > 0.1 ? 'text-amber-700' : 'text-emerald-700'}`}>
+            {(hp.escalation_rate * 100).toFixed(0)}%
+          </p>
+        </div>
+      </div>
+      <div className="mt-2 flex items-center gap-2">
+        <span className="text-[10px] text-slate-400">Experience Score</span>
+        <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
+          <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${hp.experience_score * 100}%` }} />
+        </div>
+        <span className="text-[10px] text-slate-500">{(hp.experience_score * 100).toFixed(0)}%</span>
+      </div>
     </div>
   );
 }

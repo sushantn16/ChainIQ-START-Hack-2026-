@@ -188,7 +188,7 @@ def generate_overall_narrative(
 
     prompt = f"""Generate a concise audit-ready recommendation summary for this procurement request.
 
-IMPORTANT: Rank #1 is the recommended supplier. This ranking was computed by a weighted fit score (price 35%, quality 35%, risk 20%, lead time 10%). Do NOT recommend a different supplier. Your job is to explain WHY rank #1 won, not to pick a different winner.
+IMPORTANT: Rank #1 is the recommended supplier. This ranking was computed by a weighted fit score (price 40%, quality 30%, risk 20%, lead time 10%). Do NOT recommend a different supplier. Your job is to explain WHY rank #1 won, not to pick a different winner.
 
 Request: {request_summary.get('category_l2', 'Unknown')} — {request_summary.get('quantity', '?')} units
 Budget: {request_summary.get('currency', '')} {request_summary.get('budget_amount', 'not specified')}
@@ -536,6 +536,67 @@ def _regex_extract(request_text: str, existing_fields: dict) -> dict:
             break
 
     return result
+
+
+def extract_date_fallback(text: str) -> str | None:
+    """Extract a date from text using regex. Used as post-LLM safety net."""
+    if not text:
+        return None
+    text_lower = text.lower()
+    now = datetime.utcnow()
+    _word_to_num = {
+        "a": 1, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+        "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+        "eleven": 11, "twelve": 12, "couple": 2, "few": 3,
+    }
+    _NUM_WORDS = "a|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|couple|few"
+
+    # 1. ISO date
+    iso_match = re.search(r'(\d{4}-\d{2}-\d{2})', text_lower)
+    if iso_match:
+        return iso_match.group(1)
+
+    # 2. Relative: "in 2 weeks", "in two weeks", "within 3 days"
+    relative_patterns = [
+        rf'(?:in|within)\s+(?:about|approximately|approx\.?|around|~)?\s*(\d+)\s*(week|weeks|month|months|day|days)',
+        rf'(?:in|within)\s+(?:about|approximately|approx\.?|around|~)?\s*({_NUM_WORDS})\s*(?:of\s*)?(week|weeks|month|months|day|days)',
+        rf'(?:in|within)\s+(?:a\s+)?(?:couple|few)\s+(?:of\s+)?(week|weeks|month|months|day|days)',
+        r'next\s*(week|month)',
+    ]
+    for pattern in relative_patterns:
+        match = re.search(pattern, text_lower, re.IGNORECASE)
+        if match:
+            groups = match.groups()
+            if len(groups) == 1:
+                num, unit = 1, groups[0]
+            elif len(groups) == 2:
+                raw_num, unit = groups
+                num = _word_to_num.get(raw_num.lower()) if raw_num.lower() in _word_to_num else None
+                if num is None:
+                    try:
+                        num = int(raw_num)
+                    except ValueError:
+                        continue
+            else:
+                continue
+            if unit.startswith("week"):
+                delta = timedelta(days=num * 7)
+            elif unit.startswith("month"):
+                delta = timedelta(days=num * 30)
+            else:
+                delta = timedelta(days=num)
+            return (now + delta).strftime("%Y-%m-%d")
+
+    # 3. ASAP / urgent / tomorrow
+    if re.search(r'\basap\b|as\s+soon\s+as\s+possible', text_lower, re.IGNORECASE):
+        return (now + timedelta(days=3)).strftime("%Y-%m-%d")
+    if re.search(r'\btomorrow\b', text_lower, re.IGNORECASE):
+        return (now + timedelta(days=1)).strftime("%Y-%m-%d")
+    if re.search(r'\burgent\b', text_lower, re.IGNORECASE):
+        return (now + timedelta(days=5)).strftime("%Y-%m-%d")
+
+    return None
+
 
 
 # --- Template fallbacks ---

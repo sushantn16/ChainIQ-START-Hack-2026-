@@ -394,8 +394,8 @@ function FitScoreDetail({ supplier: s, allSuppliers }) {
   const riskNorm = 1 - s.risk_score / 100;
 
   const factors = [
-    { label: 'Price', weight: 35, score: priceNorm, color: 'bg-emerald-500' },
-    { label: 'Quality', weight: 35, score: qualityNorm, color: 'bg-blue-500' },
+    { label: 'Price', weight: 40, score: priceNorm, color: 'bg-emerald-500' },
+    { label: 'Quality', weight: 30, score: qualityNorm, color: 'bg-blue-500' },
     { label: 'Risk', weight: 20, score: riskNorm, color: 'bg-amber-500' },
     { label: 'Lead Time', weight: 10, score: leadNorm, color: 'bg-purple-500' },
   ];
@@ -403,7 +403,7 @@ function FitScoreDetail({ supplier: s, allSuppliers }) {
   return (
     <div className="p-3 bg-slate-50 rounded border border-slate-100">
       {(() => {
-        const prefBonus = (s.preferred || s.user_preferred) ? 10 : 0;
+        const prefBonus = (s.preferred || s.user_preferred) ? 5 : 0;
         const expBonus = s.historical_performance?.experience_score > 0 ? s.historical_performance.experience_score * 5 : 0;
         const baseScore = (s.composite_score * 100) - prefBonus - expBonus;
         const hasBonuses = prefBonus > 0 || expBonus > 0;

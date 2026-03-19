@@ -20,6 +20,7 @@ from backend.escalation import evaluate_escalations
 from backend.extraction import (
     extract_from_text, translate_text,
     generate_recommendation_note, generate_overall_narrative,
+    extract_date_fallback,
 )
 from backend.supplier_discovery import discover_suppliers
 from backend.what_if import compute_what_if
@@ -898,7 +899,10 @@ def _build_interpretation(req: ProcessRequest, raw: dict | None) -> RequestInter
                 categories=store.categories if hasattr(store, "categories") else [],
             )
 
-        required_by = raw.get("required_by_date")
+        required_by = raw.get("required_by_date") or llm_fields.get("required_by_date")
+        # Post-LLM date fallback for existing requests with text
+        if not required_by and (translated_text or request_text):
+            required_by = extract_date_fallback(translated_text or request_text)
         days_until = None
         if required_by and raw.get("created_at"):
             try:
@@ -978,6 +982,9 @@ def _build_interpretation(req: ProcessRequest, raw: dict | None) -> RequestInter
         budget = req.budget_amount or llm_fields.get("budget_amount") or llm_fields.get("text_budget")
         currency = req.currency or llm_fields.get("currency", "EUR")
         required_by = req.required_by_date or llm_fields.get("required_by_date") or llm_fields.get("text_date")
+        # Post-LLM date fallback: if LLM didn't resolve a relative date, try regex
+        if not required_by and request_text:
+            required_by = extract_date_fallback(request_text)
         preferred = req.preferred_supplier_mentioned or llm_fields.get("preferred_supplier") or llm_fields.get("text_preferred_supplier")
         delivery = req.delivery_countries or ([req.country] if req.country else
                    llm_fields.get("delivery_countries", []))

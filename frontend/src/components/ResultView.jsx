@@ -285,7 +285,7 @@ function ShortlistPanel({ shortlist }) {
 
           {/* Scores */}
           <div className="mt-3 grid grid-cols-5 gap-3">
-            <ScoreBadge label="Composite" value={s.composite_score} max={1} format={v => v.toFixed(4)} />
+            <ScoreBadge label="Fit Score" value={s.composite_score} max={1} format={v => `${(v * 100).toFixed(1)}%`} />
             <ScoreBadge label="Quality" value={s.quality_score} max={100} />
             <RiskBadge riskScore={s.risk_score} riskComposite={s.risk_composite} />
             <ScoreBadge label="ESG" value={s.esg_score} max={100} />
@@ -302,10 +302,11 @@ function ShortlistPanel({ shortlist }) {
             </div>
           </div>
 
-          {/* Risk Composite Breakdown */}
-          {s.risk_composite && (
-            <RiskCompositeDetail rc={s.risk_composite} />
-          )}
+          {/* Fit Score Breakdown + Risk Composite */}
+          <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2">
+            <FitScoreDetail supplier={s} allSuppliers={shortlist} />
+            {s.risk_composite && <RiskCompositeDetail rc={s.risk_composite} />}
+          </div>
 
           {/* Recommendation Note */}
           {s.recommendation_note && (
@@ -332,6 +333,47 @@ function ScoreBadge({ label, value, max, invert = false, format }) {
       <p className={`text-sm font-semibold ${color}`}>
         {format ? format(value) : value}{max === 100 ? '/100' : ''}
       </p>
+    </div>
+  );
+}
+
+function FitScoreDetail({ supplier: s, allSuppliers }) {
+  const prices = allSuppliers.map(x => x.total_price);
+  const minP = Math.min(...prices);
+  const maxP = Math.max(...prices);
+  const priceNorm = maxP > minP ? 1 - (s.total_price - minP) / (maxP - minP) : 1;
+  const leadScores = { standard: 1, expedited_only: 0.5, infeasible: 0 };
+  const leadNorm = leadScores[s.lead_time_feasible] ?? 0.5;
+  const qualityNorm = s.quality_score / 100;
+  const riskNorm = 1 - s.risk_score / 100;
+
+  const factors = [
+    { label: 'Price', weight: 40, score: priceNorm, color: 'bg-emerald-500' },
+    { label: 'Quality', weight: 30, score: qualityNorm, color: 'bg-blue-500' },
+    { label: 'Risk', weight: 20, score: riskNorm, color: 'bg-amber-500' },
+    { label: 'Lead Time', weight: 10, score: leadNorm, color: 'bg-purple-500' },
+  ];
+
+  return (
+    <div className="p-3 bg-slate-50 rounded border border-slate-100">
+      <div className="flex items-center gap-2 mb-2">
+        <p className="text-xs font-medium text-slate-600">Fit Score Breakdown</p>
+        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700">
+          {(s.composite_score * 100).toFixed(1)}%
+          {s.preferred && ' +5% preferred'}
+        </span>
+      </div>
+      <div className="space-y-1.5">
+        {factors.map(f => (
+          <div key={f.label} className="flex items-center gap-2">
+            <span className="text-[10px] text-slate-500 w-16">{f.label} <span className="text-slate-400">({f.weight}%)</span></span>
+            <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
+              <div className={`h-full ${f.color} rounded-full`} style={{ width: `${f.score * 100}%` }} />
+            </div>
+            <span className="text-[10px] text-slate-500 w-10 text-right">{(f.score * 100).toFixed(0)}%</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

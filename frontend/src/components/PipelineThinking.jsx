@@ -348,7 +348,7 @@ function ScoringData({ data }) {
             <th className="text-left px-2 py-1.5 font-medium">#</th>
             <th className="text-left px-2 py-1.5 font-medium">Supplier</th>
             <th className="text-right px-2 py-1.5 font-medium">{isUnitPricing ? 'Unit Price' : 'Price'}</th>
-            <th className="text-right px-2 py-1.5 font-medium">Score</th>
+            <th className="text-right px-2 py-1.5 font-medium">Fit</th>
             <th className="text-center px-2 py-1.5 font-medium">Tags</th>
           </tr>
         </thead>
@@ -364,7 +364,7 @@ function ScoringData({ data }) {
                 }
               </td>
               <td className="px-2 py-1.5 text-right font-mono text-slate-700">
-                {Number(s.composite_score).toFixed(2)}
+                {(Number(s.composite_score) * 100).toFixed(1)}%
               </td>
               <td className="px-2 py-1.5 text-center">
                 <div className="flex justify-center gap-0.5 flex-wrap">

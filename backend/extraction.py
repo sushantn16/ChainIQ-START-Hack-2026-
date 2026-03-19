@@ -188,20 +188,20 @@ def generate_overall_narrative(
 
     prompt = f"""Generate a concise audit-ready recommendation summary for this procurement request.
 
-IMPORTANT: Rank #1 is the recommended supplier. This ranking was computed by a weighted composite score (price 40%, quality 30%, risk 20%, lead time 10%). Do NOT recommend a different supplier. Your job is to explain WHY rank #1 won, not to pick a different winner.
+IMPORTANT: Rank #1 is the recommended supplier. This ranking was computed by a weighted fit score (price 40%, quality 30%, risk 20%, lead time 10%). Do NOT recommend a different supplier. Your job is to explain WHY rank #1 won, not to pick a different winner.
 
 Request: {request_summary.get('category_l2', 'Unknown')} — {request_summary.get('quantity', '?')} units
 Budget: {request_summary.get('currency', '')} {request_summary.get('budget_amount', 'not specified')}
 Delivery: {', '.join(request_summary.get('delivery_countries', []))}
 
 Ranked suppliers (rank #1 = recommendation):
-{chr(10).join(f"#{s.rank} {s.supplier_name}: {s.currency} {s.total_price:,.2f} (composite={s.composite_score:.4f}, quality={s.quality_score}, risk={s.risk_score})" for s in shortlist[:3])}
+{chr(10).join(f"#{s.rank} {s.supplier_name}: {s.currency} {s.total_price:,.2f} (fit={s.composite_score * 100:.1f}%, quality={s.quality_score}, risk={s.risk_score})" for s in shortlist[:3])}
 {pref_context}
 
 Issues: {len(validation_issues)} validation issues, {len(escalations)} escalations
 Blocking: {any(e.blocking for e in escalations)}
 
-Write 2-3 sentences. Start with "Recommend awarding to {shortlist[0].supplier_name if shortlist else '?'}". Explain why it ranks first using the composite score breakdown. Compare briefly with runners-up."""
+Write 2-3 sentences. Start with "Recommend awarding to {shortlist[0].supplier_name if shortlist else '?'}". Explain why it ranks first using the fit score breakdown. Compare briefly with runners-up."""
 
     result = call_claude_json(
         NARRATION_SYSTEM,
@@ -572,7 +572,7 @@ def _template_overall(request_summary, shortlist, escalations, validation_issues
         parts.append(
             f"Top recommendation: {winner.supplier_name} at "
             f"{winner.currency} {winner.total_price:,.2f} "
-            f"(composite score {winner.composite_score:.4f})."
+            f"(fit score {winner.composite_score * 100:.1f}%)."
         )
         if len(shortlist) > 1:
             parts.append(f"{len(shortlist)} suppliers compared.")

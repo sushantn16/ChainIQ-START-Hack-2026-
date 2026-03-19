@@ -977,8 +977,8 @@ def _build_recommendation(
                     f"Preferred supplier {pref_name} ranked #{pref_entry.rank} "
                     f"({pref_entry.currency} {pref_entry.total_price:,.2f}, "
                     f"+{pref_entry.currency} {price_diff:,.2f}) — "
-                    f"outranked on price and composite score "
-                    f"({winner.composite_score:.2f} vs {pref_entry.composite_score:.2f})."
+                    f"outranked on price and fit score "
+                    f"({winner.composite_score * 100:.1f}% vs {pref_entry.composite_score * 100:.1f}%)."
                 )
             else:
                 reason_parts.append(

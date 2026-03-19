@@ -60,8 +60,8 @@ def compute_what_if(
                     "description": (
                         f"{best_fit.supplier_name} at {best_fit.currency} {best_fit.total_price:,.2f} "
                         f"fits within the {currency} {budget:,.2f} budget. "
-                        f"Composite score: {best_fit.composite_score:.4f} "
-                        f"(vs. top-ranked {shortlist[0].composite_score:.4f})."
+                        f"Fit score: {best_fit.composite_score * 100:.1f}% "
+                        f"(vs. top-ranked {shortlist[0].composite_score * 100:.1f}%)."
                     ),
                     "parameter": "supplier_choice",
                     "current_value": shortlist[0].supplier_name,

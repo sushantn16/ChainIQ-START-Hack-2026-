@@ -1,6 +1,6 @@
 """
-What-If Analysis — automatically suggests parameter changes that would improve outcomes.
-Runs deterministic simulations: budget increase, deadline extension, quantity adjustment.
+What-If Analysis — suggests parameter changes that would improve outcomes.
+Only suggests scenarios that are realistic and actionable.
 """
 
 from backend.data_loader import get_store
@@ -30,9 +30,9 @@ def compute_what_if(
     store = get_store()
     scenarios = []
 
-    # --- Scenario 1: Budget increase ---
+    # --- Scenario 1: Budget increase (only when budget is actually insufficient) ---
     if budget and quantity and shortlist:
-        best_price = min(s.total_price for s in shortlist)
+        best_price = shortlist[0].total_price  # already ranked by composite
         if best_price > budget:
             needed = best_price
             increase_pct = ((needed / budget) - 1) * 100
@@ -47,129 +47,43 @@ def compute_what_if(
                 "parameter": "budget_amount",
                 "current_value": budget,
                 "suggested_value": round(needed, 2),
-                "impact": "Removes budget_insufficient validation issue and unblocks recommendation",
+                "impact": "Top-ranked supplier becomes within budget",
             })
 
-        # Check if a larger budget unlocks more suppliers (by checking excluded ones)
-        # Find cheapest across ALL suppliers in category (not just matched)
-        all_candidates, _ = match_suppliers(
-            category_l1=category_l1,
-            category_l2=category_l2,
-            delivery_countries=delivery_countries,
-            currency=currency,
-            quantity=quantity,
-            data_residency_required=data_residency_required,
-            contract_value=budget * 2,  # higher value to include more
-            store=store,
-        )
-        if len(all_candidates) > len(shortlist):
-            # Some suppliers were excluded by value-based restrictions
-            extra = len(all_candidates) - len(shortlist)
-            scenarios.append({
-                "scenario": "budget_unlock",
-                "title": f"Higher budget could unlock {extra} more supplier(s)",
-                "description": (
-                    f"Increasing the contract value may lift value-based restrictions, "
-                    f"adding {extra} supplier(s) to the competitive pool."
-                ),
-                "parameter": "budget_amount",
-                "current_value": budget,
-                "suggested_value": round(budget * 1.5, 2),
-                "impact": f"{extra} additional supplier(s) become eligible",
-            })
-
-    # --- Scenario 2: Deadline extension ---
-    if days_until_required is not None and quantity and shortlist:
-        infeasible = [s for s in shortlist if s.lead_time_feasible == "infeasible"]
-        expedited_only = [s for s in shortlist if s.lead_time_feasible == "expedited_only"]
-
-        if infeasible:
-            # Find the minimum extra days needed for the cheapest infeasible supplier
-            min_extra_days = None
-            best_infeasible = None
-            for s in infeasible:
-                extra = s.expedited_lead_time_days - days_until_required
-                if extra > 0 and (min_extra_days is None or extra < min_extra_days):
-                    min_extra_days = extra
-                    best_infeasible = s
-
-            if min_extra_days and best_infeasible:
+            # Also suggest: pick the cheapest in-budget supplier if one exists
+            in_budget = [s for s in shortlist if s.total_price <= budget]
+            if in_budget:
+                best_fit = in_budget[0]  # highest composite among affordable
                 scenarios.append({
-                    "scenario": "deadline_extension",
-                    "title": f"Extend deadline by {min_extra_days} day(s)",
+                    "scenario": "affordable_alternative",
+                    "title": f"Use {best_fit.supplier_name} (within budget)",
                     "description": (
-                        f"Adding {min_extra_days} day(s) to the delivery deadline "
-                        f"(from {days_until_required}d to {days_until_required + min_extra_days}d) "
-                        f"would make {best_infeasible.supplier_name} feasible via expedited delivery."
+                        f"{best_fit.supplier_name} at {best_fit.currency} {best_fit.total_price:,.2f} "
+                        f"fits within the {currency} {budget:,.2f} budget. "
+                        f"Composite score: {best_fit.composite_score:.4f} "
+                        f"(vs. top-ranked {shortlist[0].composite_score:.4f})."
                     ),
-                    "parameter": "days_until_required",
-                    "current_value": days_until_required,
-                    "suggested_value": days_until_required + min_extra_days,
-                    "impact": f"{len(infeasible)} supplier(s) become feasible with expedited delivery",
+                    "parameter": "supplier_choice",
+                    "current_value": shortlist[0].supplier_name,
+                    "suggested_value": best_fit.supplier_name,
+                    "impact": f"Saves {currency} {shortlist[0].total_price - best_fit.total_price:,.2f} while staying within budget",
                 })
 
-            # Check standard delivery feasibility
-            min_standard_extra = None
-            for s in infeasible + expedited_only:
-                extra = s.standard_lead_time_days - days_until_required
-                if extra > 0 and (min_standard_extra is None or extra < min_standard_extra):
-                    min_standard_extra = extra
-
-            if min_standard_extra and min_standard_extra != min_extra_days:
-                scenarios.append({
-                    "scenario": "deadline_standard",
-                    "title": f"Extend deadline by {min_standard_extra} day(s) for standard pricing",
-                    "description": (
-                        f"Extending by {min_standard_extra} day(s) would allow standard delivery "
-                        f"(no expedited premium), saving on delivery costs."
-                    ),
-                    "parameter": "days_until_required",
-                    "current_value": days_until_required,
-                    "suggested_value": days_until_required + min_standard_extra,
-                    "impact": "Standard delivery pricing available (no expedited surcharge)",
-                })
-
-        elif expedited_only:
-            # All feasible but require expedited — suggest extension for standard
-            min_standard_extra = None
-            for s in expedited_only:
-                extra = s.standard_lead_time_days - days_until_required
-                if extra > 0 and (min_standard_extra is None or extra < min_standard_extra):
-                    min_standard_extra = extra
-
-            if min_standard_extra:
-                # Compute savings
-                savings = sum(
-                    s.expedited_total - s.total_price
-                    for s in expedited_only
-                ) / len(expedited_only)
-                scenarios.append({
-                    "scenario": "deadline_savings",
-                    "title": f"Extend deadline by {min_standard_extra} day(s) to save on delivery",
-                    "description": (
-                        f"All current suppliers require expedited delivery. Extending deadline by "
-                        f"{min_standard_extra} day(s) enables standard pricing, saving an average of "
-                        f"{currency} {savings:,.2f} per supplier."
-                    ),
-                    "parameter": "days_until_required",
-                    "current_value": days_until_required,
-                    "suggested_value": days_until_required + min_standard_extra,
-                    "impact": f"Average savings of {currency} {savings:,.2f} per supplier via standard delivery",
-                })
-
-    # --- Scenario 3: Quantity reduction (to fit budget) ---
+    # --- Scenario 2: Quantity reduction to fit budget ---
     if budget and quantity and shortlist:
-        best_unit_price = min(s.unit_price for s in shortlist)
-        max_qty_in_budget = int(budget / best_unit_price) if best_unit_price > 0 else quantity
+        cheapest_unit = min(s.unit_price for s in shortlist)
+        max_qty_in_budget = int(budget / cheapest_unit) if cheapest_unit > 0 else quantity
 
         if max_qty_in_budget < quantity:
+            cheapest_supplier = min(shortlist, key=lambda s: s.unit_price)
             scenarios.append({
                 "scenario": "quantity_reduction",
                 "title": f"Reduce quantity to {max_qty_in_budget} units",
                 "description": (
-                    f"At the best unit price ({currency} {best_unit_price:,.2f}/unit), "
-                    f"the budget of {currency} {budget:,.2f} supports {max_qty_in_budget} units "
-                    f"(vs. requested {quantity}). Consider phased delivery."
+                    f"At the best unit price ({currency} {cheapest_unit:,.2f}/unit from "
+                    f"{cheapest_supplier.supplier_name}), the budget of {currency} {budget:,.2f} "
+                    f"supports {max_qty_in_budget} units (vs. requested {quantity}). "
+                    f"Consider phased delivery for the remaining {quantity - max_qty_in_budget}."
                 ),
                 "parameter": "quantity",
                 "current_value": quantity,
@@ -177,32 +91,144 @@ def compute_what_if(
                 "impact": f"Procurement fits within budget; remaining {quantity - max_qty_in_budget} units in next cycle",
             })
 
-    # --- Scenario 4: Alternative supplier available in different region ---
-    if delivery_countries and quantity and len(shortlist) < 3:
-        # Check if removing country constraint gives more suppliers
-        candidates_no_geo, _ = match_suppliers(
-            category_l1=category_l1,
-            category_l2=category_l2,
-            delivery_countries=[],  # no geo filter
-            currency=currency,
-            quantity=quantity,
-            data_residency_required=data_residency_required,
-            contract_value=budget,
-            store=store,
-        )
-        extra_without_geo = len(candidates_no_geo) - len(shortlist)
-        if extra_without_geo > 0:
+    # --- Scenario 3: Deadline extension ---
+    if days_until_required is not None and shortlist:
+        infeasible = [s for s in shortlist if s.lead_time_feasible == "infeasible"]
+        expedited_only = [s for s in shortlist if s.lead_time_feasible == "expedited_only"]
+
+        if infeasible:
+            # Find the minimum extra days needed to make at least one infeasible supplier work
+            best_infeasible = None
+            min_extra = None
+            for s in infeasible:
+                extra = s.expedited_lead_time_days - days_until_required
+                if extra > 0 and (min_extra is None or extra < min_extra):
+                    min_extra = extra
+                    best_infeasible = s
+
+            if min_extra and best_infeasible:
+                scenarios.append({
+                    "scenario": "deadline_extension",
+                    "title": f"Extend deadline by {min_extra} day(s)",
+                    "description": (
+                        f"Adding {min_extra} day(s) to the delivery deadline "
+                        f"(from {days_until_required}d to {days_until_required + min_extra}d) "
+                        f"would make {best_infeasible.supplier_name} feasible via expedited delivery."
+                    ),
+                    "parameter": "days_until_required",
+                    "current_value": days_until_required,
+                    "suggested_value": days_until_required + min_extra,
+                    "impact": f"{len(infeasible)} supplier(s) become feasible with expedited delivery",
+                })
+
+        if expedited_only:
+            # Suggest extension for standard pricing (saves expedited premium)
+            min_standard_extra = None
+            for s in expedited_only + infeasible:
+                extra = s.standard_lead_time_days - days_until_required
+                if extra > 0 and (min_standard_extra is None or extra < min_standard_extra):
+                    min_standard_extra = extra
+
+            if min_standard_extra:
+                avg_premium = 0
+                for s in expedited_only:
+                    avg_premium += (s.expedited_unit_price - s.unit_price) * (quantity or 1)
+                if expedited_only:
+                    avg_premium /= len(expedited_only)
+
+                scenarios.append({
+                    "scenario": "deadline_savings",
+                    "title": f"Extend deadline by {min_standard_extra} day(s) to avoid expedited premium",
+                    "description": (
+                        f"Extending by {min_standard_extra} day(s) enables standard delivery "
+                        f"(no expedited surcharge), saving ~{currency} {avg_premium:,.2f} on average."
+                    ),
+                    "parameter": "days_until_required",
+                    "current_value": days_until_required,
+                    "suggested_value": days_until_required + min_standard_extra,
+                    "impact": f"Standard delivery pricing available, ~{currency} {avg_premium:,.2f} saved",
+                })
+
+    # --- Scenario 4: Split multi-country order ---
+    # If delivery to multiple countries and few/no suppliers cover all of them,
+    # suggest splitting the order by country for better supplier coverage.
+    if len(delivery_countries) > 1 and quantity:
+        # Check per-country supplier availability
+        per_country_counts = {}
+        for country in delivery_countries:
+            c, _ = match_suppliers(
+                category_l1=category_l1,
+                category_l2=category_l2,
+                delivery_countries=[country],
+                currency=currency,
+                quantity=quantity,
+                data_residency_required=data_residency_required,
+                contract_value=budget,
+                store=store,
+            )
+            per_country_counts[country] = len(c)
+
+        total_per_country = sum(per_country_counts.values())
+        current_count = len(shortlist)
+
+        # Only suggest split if individual countries have more options
+        if total_per_country > current_count and current_count < 3:
+            country_details = ", ".join(
+                f"{c}: {n} supplier(s)" for c, n in per_country_counts.items()
+            )
             scenarios.append({
-                "scenario": "geo_flexibility",
-                "title": f"{extra_without_geo} more supplier(s) if delivery location is flexible",
+                "scenario": "split_by_country",
+                "title": f"Split order across {len(delivery_countries)} countries",
                 "description": (
-                    f"Relaxing the delivery constraint from {', '.join(delivery_countries)} "
-                    f"would add {extra_without_geo} supplier(s) to the pool."
+                    f"Currently {current_count} supplier(s) cover all countries "
+                    f"({', '.join(delivery_countries)}). Splitting the order gives "
+                    f"more options per region: {country_details}."
                 ),
                 "parameter": "delivery_countries",
                 "current_value": delivery_countries,
-                "suggested_value": "flexible",
-                "impact": f"{extra_without_geo} additional supplier(s) available if cross-border delivery acceptable",
+                "suggested_value": "split_per_country",
+                "impact": f"More competitive options per region vs. {current_count} supplier(s) covering all",
             })
 
-    return scenarios[:5]  # max 5 scenarios
+    # --- Scenario 5: Volume discount (quantity increase) ---
+    if quantity and shortlist:
+        # Check if a higher quantity tier would give a better unit price
+        top = shortlist[0]
+        current_tier = find_pricing_tier(
+            top.supplier_id, category_l1, category_l2,
+            delivery_countries, quantity, store,
+        )
+        if current_tier:
+            # Find the next tier up
+            region_key = (top.supplier_id, category_l1, category_l2,
+                         current_tier.get("region", "EU"))
+            all_tiers = store.pricing_by_supplier.get(region_key, [])
+            next_tier = None
+            for t in sorted(all_tiers, key=lambda x: x["min_quantity"]):
+                if t["min_quantity"] > quantity:
+                    next_tier = t
+                    break
+
+            if next_tier and next_tier["unit_price"] < current_tier["unit_price"]:
+                savings_per_unit = current_tier["unit_price"] - next_tier["unit_price"]
+                min_qty = next_tier["min_quantity"]
+                # Only suggest if the quantity bump is reasonable (<50% more)
+                if min_qty <= quantity * 1.5:
+                    total_at_new = next_tier["unit_price"] * min_qty
+                    total_at_current = current_tier["unit_price"] * quantity
+                    scenarios.append({
+                        "scenario": "volume_discount",
+                        "title": f"Increase to {min_qty} units for volume pricing",
+                        "description": (
+                            f"Ordering {min_qty} units (from {quantity}) unlocks a lower tier: "
+                            f"{currency} {next_tier['unit_price']:,.2f}/unit "
+                            f"(vs. current {currency} {current_tier['unit_price']:,.2f}/unit). "
+                            f"Saves {currency} {savings_per_unit:,.2f}/unit."
+                        ),
+                        "parameter": "quantity",
+                        "current_value": quantity,
+                        "suggested_value": min_qty,
+                        "impact": f"Unit price drops by {currency} {savings_per_unit:,.2f} ({savings_per_unit/current_tier['unit_price']*100:.1f}% saving)",
+                    })
+
+    return scenarios[:5]

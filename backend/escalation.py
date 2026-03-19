@@ -113,32 +113,6 @@ def evaluate_escalations(
             blocking=False,
         )
 
-    # Budget advisory — NOT blocking, just a note
-    budget_issues = [i for i in validation.issues_detected
-                     if i.type == "budget_advisory"]
-    if budget_issues:
-        add_esc(
-            "ER-BUDGET",
-            f"Budget advisory: {budget_issues[0].description} "
-            f"See what-if scenarios for alternatives.",
-            "Requester Review",
-            blocking=False,
-        )
-
-    # Lead time advisory — NOT blocking
-    lead_issues = [i for i in validation.issues_detected
-                   if i.type == "lead_time_advisory"]
-    if lead_issues:
-        all_infeasible = all(s.lead_time_feasible == "infeasible" for s in shortlist) if shortlist else False
-        add_esc(
-            "ER-TIMELINE",
-            f"Timeline advisory: {lead_issues[0].description} "
-            + ("All suppliers exceed deadline — expedited pricing shown." if all_infeasible
-               else "Some suppliers can meet deadline with expedited delivery."),
-            "Requester Review",
-            blocking=False,
-        )
-
     # Deduplicate by rule (keep first occurrence)
     seen_rules = set()
     deduped = []

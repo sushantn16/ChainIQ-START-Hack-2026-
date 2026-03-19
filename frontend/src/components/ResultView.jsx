@@ -284,7 +284,12 @@ function ShortlistPanel({ shortlist }) {
             </div>
             <div className="text-right">
               <p className="text-xl font-bold text-slate-900">{s.currency} {Number(s.total_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-              <p className="text-xs text-slate-500">{s.unit_price.toFixed(2)}/unit × {(s.total_price / s.unit_price).toLocaleString()} qty</p>
+              <p className="text-xs text-slate-500">
+                {s.unit_price === s.total_price
+                  ? `${s.unit_price.toFixed(2)}/unit (per-unit preview)`
+                  : `${s.unit_price.toFixed(2)}/unit × ${Math.round(s.total_price / s.unit_price).toLocaleString()} qty`
+                }
+              </p>
             </div>
           </div>
 
@@ -438,12 +443,12 @@ function EscalationPanel({ escalations }) {
 function WhatIfPanel({ scenarios }) {
   const SCENARIO_ICONS = {
     budget_increase: '💰',
-    budget_unlock: '🔓',
+    affordable_alternative: '💡',
     deadline_extension: '📅',
-    deadline_standard: '⏱',
     deadline_savings: '💸',
     quantity_reduction: '📦',
-    geo_flexibility: '🌍',
+    split_by_country: '🌍',
+    volume_discount: '📈',
   };
 
   return (

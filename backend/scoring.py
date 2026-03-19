@@ -215,29 +215,11 @@ def score_and_rank_suppliers(
             quality_score=sup["quality_score"],
             risk_score=sup["risk_score"],
             esg_score=sup["esg_score"],
-            policy_compliant=True,
-            covers_delivery_country=True,
             lead_time_feasible=pd["lead_status"],
             composite_score=score,
             capacity_exceeded=sup.get("capacity_exceeded", False),
             recommendation_note="",
         )
-
-        # Generate recommendation note
-        notes = []
-        if is_incumbent:
-            notes.append("Incumbent supplier")
-        if sup.get("preferred_supplier"):
-            notes.append("Preferred supplier")
-        if pd["lead_status"] == "infeasible":
-            notes.append(f"Lead time infeasible: standard {tier['standard_lead_time_days']}d, expedited {tier['expedited_lead_time_days']}d")
-        elif pd["lead_status"] == "expedited_only":
-            notes.append(f"Requires expedited delivery (+{tier['expedited_unit_price'] - tier['unit_price']:.2f}/unit premium)")
-        if sup.get("capacity_exceeded"):
-            notes.append(f"Capacity risk: requested {effective_quantity} exceeds {sup['capacity_per_month']}/month capacity")
-        if is_unit_pricing:
-            notes.append(f"Per-unit price: {tier['currency']} {tier['unit_price']:,.2f}")
-        entry.recommendation_note = ". ".join(notes) if notes else f"Total {pd['total_price']:,.2f} {tier['currency']}, quality {sup['quality_score']}, risk {sup['risk_score']}"
 
         scored.append(entry)
 

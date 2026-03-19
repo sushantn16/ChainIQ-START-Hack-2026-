@@ -40,8 +40,8 @@ export default function PipelineThinking({ steps, currentStep, done }) {
         <div className="flex items-center gap-3">
           <h3 className="text-base font-semibold text-slate-900">Pipeline Thinking</h3>
           {!done && (
-            <span className="flex items-center gap-1.5 text-xs text-blue-600 font-medium">
-              <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+            <span className="flex items-center gap-1.5 text-xs text-brand-500 font-medium">
+              <span className="w-2 h-2 rounded-full bg-brand-500 animate-pulse"></span>
               Processing...
             </span>
           )}
@@ -84,7 +84,7 @@ export default function PipelineThinking({ steps, currentStep, done }) {
                   {/* Step indicator */}
                   <div className={`relative z-10 flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
                     isActive
-                      ? `bg-blue-600 text-white ring-4 ring-blue-100 animate-pulse`
+                      ? `bg-brand-500 text-white ring-4 ring-brand-100 animate-pulse`
                       : isCompleted
                         ? `bg-emerald-500 text-white`
                         : `bg-slate-100 text-slate-400`
@@ -95,7 +95,7 @@ export default function PipelineThinking({ steps, currentStep, done }) {
                   {/* Step content */}
                   <div className={`flex-1 min-w-0 pt-1 transition-opacity duration-300 ${isPending ? 'opacity-40' : 'opacity-100'}`}>
                     <p className={`text-sm font-medium ${
-                      isActive ? 'text-blue-700' : isCompleted ? 'text-slate-900' : 'text-slate-400'
+                      isActive ? 'text-brand-700' : isCompleted ? 'text-slate-900' : 'text-slate-400'
                     }`}>
                       {config.label}
                     </p>
@@ -105,7 +105,7 @@ export default function PipelineThinking({ steps, currentStep, done }) {
                         key={i}
                         className={`text-xs mt-0.5 leading-relaxed ${
                           isActive && i === stepEntries.length - 1
-                            ? 'text-blue-600'
+                            ? 'text-brand-500'
                             : 'text-slate-500'
                         }`}
                       >
@@ -115,9 +115,9 @@ export default function PipelineThinking({ steps, currentStep, done }) {
 
                     {isActive && stepEntries.length > 0 && (
                       <div className="mt-1 flex items-center gap-1">
-                        <span className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                        <span className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                        <span className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                        <span className="w-1 h-1 bg-brand-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                        <span className="w-1 h-1 bg-brand-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                        <span className="w-1 h-1 bg-brand-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
                       </div>
                     )}
 
@@ -281,7 +281,7 @@ function ValidationData({ data }) {
                 <Badge text="auto-adapted" color="blue" />
                 <div>
                   <span className="text-slate-600">{a.description}</span>
-                  <p className="text-blue-600 text-[11px]">{a.action}</p>
+                  <p className="text-brand-500 text-[11px]">{a.action}</p>
                 </div>
               </div>
             ))}
@@ -296,7 +296,7 @@ function ValidationData({ data }) {
             <div>
               <span className="text-slate-700 font-medium">{issue.type.replace(/_/g, ' ')}</span>
               <p className="text-slate-500 text-[11px]">{issue.description}</p>
-              <p className="text-blue-600 text-[11px]">{issue.action}</p>
+              <p className="text-brand-500 text-[11px]">{issue.action}</p>
             </div>
           </div>
         ))}
@@ -356,7 +356,7 @@ function ScoringData({ data }) {
   return (
     <DataCard className="p-0 overflow-hidden">
       {isUnitPricing && (
-        <div className="px-2 py-1.5 bg-blue-50 text-blue-700 text-[11px] flex items-center gap-1.5">
+        <div className="px-2 py-1.5 bg-brand-50 text-brand-700 text-[11px] flex items-center gap-1.5">
           <Badge text="auto-adapted" color="blue" />
           <span>No quantity specified — showing per-unit pricing. Provide quantity for total costs.</span>
         </div>
@@ -520,7 +520,7 @@ function EscalationData({ data }) {
             <div>
               <span className="text-slate-700 font-medium">{e.rule}</span>
               <p className="text-slate-500 text-[11px]">{e.trigger}</p>
-              <p className="text-blue-500 text-[10px]">FYI: {e.escalate_to}</p>
+              <p className="text-brand-500 text-[10px]">FYI: {e.escalate_to}</p>
             </div>
           </div>
         ))}
@@ -578,7 +578,7 @@ function WhatIfData({ data }) {
               <div className="flex items-center gap-1 mt-0.5 text-[10px]">
                 <span className="text-slate-400">{s.current_value}</span>
                 <span className="text-slate-300">&rarr;</span>
-                <span className="text-blue-600 font-medium">{s.suggested_value}</span>
+                <span className="text-brand-500 font-medium">{s.suggested_value}</span>
               </div>
             )}
           </div>

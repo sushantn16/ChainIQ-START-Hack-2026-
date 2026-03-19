@@ -64,18 +64,18 @@ export default function MissingFieldsPrompt({ missingFields, interpretation, isP
   }
 
   return (
-    <div className="bg-blue-50 border border-blue-200 rounded-xl overflow-hidden">
+    <div className="bg-brand-50 border border-brand-200 rounded-xl overflow-hidden">
       {/* Header */}
-      <div className="px-6 py-4 border-b border-blue-100">
+      <div className="px-6 py-4 border-b border-brand-100">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+          <div className="w-8 h-8 rounded-full bg-brand-500 flex items-center justify-center flex-shrink-0">
             <span className="text-white text-sm font-bold">?</span>
           </div>
           <div>
-            <h3 className="text-base font-semibold text-blue-900">
+            <h3 className="text-base font-semibold text-brand-900">
               {isPreview ? 'Complete Your Request' : 'Improve Your Results'}
             </h3>
-            <p className="text-sm text-blue-700 mt-0.5">
+            <p className="text-sm text-brand-700 mt-0.5">
               {isPreview
                 ? 'We\'ve shown a preview based on what we know. Provide the missing details for a final recommendation.'
                 : 'Your recommendation is ready. Adding these optional details will improve accuracy.'
@@ -89,7 +89,7 @@ export default function MissingFieldsPrompt({ missingFields, interpretation, isP
       <div className="px-6 py-4 space-y-4">
         {required.length > 0 && (
           <div>
-            <p className="text-xs font-semibold text-blue-800 uppercase tracking-wide mb-3">Required to finalize</p>
+            <p className="text-xs font-semibold text-brand-800 uppercase tracking-wide mb-3">Required to finalize</p>
             <div className="space-y-3">
               {required.map(f => (
                 <FieldInput key={f.field} field={f} value={values[f.field]} onChange={v => setValues(prev => ({ ...prev, [f.field]: v }))} />
@@ -111,8 +111,8 @@ export default function MissingFieldsPrompt({ missingFields, interpretation, isP
       </div>
 
       {/* Actions */}
-      <div className="px-6 py-4 border-t border-blue-100 bg-blue-100/50 flex items-center justify-between">
-        <p className="text-xs text-blue-600">
+      <div className="px-6 py-4 border-t border-brand-100 bg-brand-100/50 flex items-center justify-between">
+        <p className="text-xs text-brand-500">
           {isPreview
             ? (canSubmit
                 ? 'Ready to re-process with complete data'
@@ -123,7 +123,7 @@ export default function MissingFieldsPrompt({ missingFields, interpretation, isP
         <button
           onClick={handleSubmit}
           disabled={isPreview && !canSubmit}
-          className="px-5 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-2 text-sm"
+          className="px-5 py-2 bg-brand-500 text-white rounded-lg font-medium hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-2 text-sm"
         >
           {isPreview ? 'Re-process with Complete Data' : 'Re-process for Better Accuracy'}
         </button>
@@ -134,7 +134,7 @@ export default function MissingFieldsPrompt({ missingFields, interpretation, isP
 
 
 function FieldInput({ field, value, onChange }) {
-  const inputBase = "w-full px-3 py-2 border border-blue-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent";
+  const inputBase = "w-full px-3 py-2 border border-brand-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-transparent";
 
   return (
     <div className="flex items-start gap-4">
@@ -176,7 +176,7 @@ function FieldInput({ field, value, onChange }) {
         {field.suggestion && field.type === 'number' && (
           <button
             onClick={() => onChange(field.suggestion.replace(/[^0-9.]/g, ''))}
-            className="mt-1 text-xs text-blue-600 hover:text-blue-800"
+            className="mt-1 text-xs text-brand-500 hover:text-brand-800"
           >
             Use suggested: {field.suggestion}
           </button>

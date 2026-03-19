@@ -29,11 +29,11 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center">
                 <span className="text-white font-bold text-sm">CQ</span>
               </div>
               <div>
-                <h1 className="text-lg font-semibold text-slate-900 leading-tight">ChainIQ</h1>
+                <h1 className="text-lg font-semibold text-slate-900 leading-tight">Chain IQ</h1>
                 <p className="text-xs text-slate-500 leading-tight">Autonomous Sourcing Agent</p>
               </div>
             </div>
@@ -44,7 +44,7 @@ export default function App() {
                   onClick={() => { setTab(t); setProcessing(null); setBatchResult(null); }}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                     tab === t && !processing && !batchResult
-                      ? 'bg-blue-50 text-blue-700'
+                      ? 'bg-brand-50 text-brand-700'
                       : 'text-slate-600 hover:bg-slate-100'
                   }`}
                 >
@@ -62,7 +62,7 @@ export default function App() {
           <div>
             <button
               onClick={handleBack}
-              className="mb-4 text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
+              className="mb-4 text-sm text-brand-500 hover:text-brand-700 flex items-center gap-1"
             >
               <span>&larr;</span> Back to Batch
             </button>

@@ -102,7 +102,7 @@ export default function RequestList({ onProcess }) {
                 <td className="px-4 py-3 text-center">
                   <button
                     onClick={() => onProcess({ request_id: r.request_id })}
-                    className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors"
+                    className="px-3 py-1.5 bg-brand-500 text-white rounded-lg text-xs font-medium hover:bg-brand-700 transition-colors"
                   >
                     Process
                   </button>

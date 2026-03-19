@@ -76,11 +76,40 @@ export default function ResultView({ result }) {
         </div>
       )}
 
+      {/* Warning banners for lead time / budget issues */}
+      {r.supplier_shortlist.length > 0 && r.supplier_shortlist.every(s => s.lead_time_feasible === 'infeasible') && (
+        <div className="flex items-start gap-3 p-4 bg-orange-50 border border-orange-200 rounded-xl">
+          <span className="text-lg mt-0.5">⏰</span>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-orange-800">No Supplier Can Meet the Deadline</p>
+            <p className="text-sm text-orange-700 mt-0.5">
+              All {r.supplier_shortlist.length} suppliers have infeasible lead times.
+              Fastest option: <strong>{r.supplier_shortlist[0]?.supplier_name}</strong> at {r.supplier_shortlist.reduce((min, s) => s.expedited_lead_time_days < min ? s.expedited_lead_time_days : min, Infinity)} days (expedited).
+            </p>
+            <p className="text-xs text-orange-600 mt-1">Consider extending the delivery date or negotiating expedited terms.</p>
+          </div>
+        </div>
+      )}
+
+      {(() => {
+        const budgetIssue = r.validation?.issues_detected?.find(i => i.type === 'budget_advisory');
+        return budgetIssue ? (
+          <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+            <span className="text-lg mt-0.5">💰</span>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-amber-800">Budget Insufficient</p>
+              <p className="text-sm text-amber-700 mt-0.5">{budgetIssue.description}</p>
+              <p className="text-xs text-amber-600 mt-1">{budgetIssue.action_required}</p>
+            </div>
+          </div>
+        ) : null;
+      })()}
+
       {/* Supplier Shortlist — primary output */}
       <Section
         title={`Supplier Shortlist`}
         badge={r.supplier_shortlist.length || null}
-        badgeColor="blue"
+        badgeColor="brand"
         expanded={expandedSection === 'recommendation'}
         onToggle={() => setExpandedSection(expandedSection === 'recommendation' ? '' : 'recommendation')}
       >
@@ -121,7 +150,7 @@ export default function ResultView({ result }) {
 
       {r.what_if?.length > 0 && (
         <Section
-          title="What-If Analysis"
+          title="Smart Suggestions"
           badge={r.what_if.length}
           badgeColor="amber"
           expanded={expandedSection === 'whatif'}
@@ -142,7 +171,7 @@ export default function ResultView({ result }) {
   );
 }
 
-function Section({ title, badge, badgeColor = 'blue', expanded, onToggle, children }) {
+function Section({ title, badge, badgeColor = 'brand', expanded, onToggle, children }) {
   return (
     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
       <button
@@ -191,9 +220,9 @@ function InterpretationPanel({ interp }) {
       </div>
 
       {interp.translated_text && (
-        <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
-          <p className="text-xs font-medium text-blue-700 mb-1">Translated Text</p>
-          <p className="text-sm text-blue-900">{interp.translated_text}</p>
+        <div className="p-3 bg-brand-50 rounded-lg border border-brand-100">
+          <p className="text-xs font-medium text-brand-700 mb-1">Translated Text</p>
+          <p className="text-sm text-brand-900">{interp.translated_text}</p>
         </div>
       )}
 
@@ -270,21 +299,21 @@ function ShortlistPanel({ shortlist }) {
         <div
           key={s.supplier_id}
           className={`p-4 rounded-lg border ${
-            s.rank === 1 ? 'bg-blue-50 border-blue-200 ring-1 ring-blue-300' : 'bg-white border-slate-200'
+            s.rank === 1 ? 'bg-brand-50 border-brand-200 ring-1 ring-brand-300' : 'bg-white border-slate-200'
           }`}
         >
           <div className="flex items-start justify-between">
             <div>
               <div className="flex items-center gap-2">
                 <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
-                  s.rank === 1 ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'
+                  s.rank === 1 ? 'bg-brand-500 text-white' : 'bg-slate-200 text-slate-600'
                 }`}>
                   {s.rank}
                 </span>
                 <span className="text-base font-semibold text-slate-900">{s.supplier_name}</span>
                 {s.user_preferred && <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs font-medium">Your Preferred</span>}
                 {s.preferred && <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-xs font-medium">Preferred List</span>}
-                {s.incumbent && <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium">Incumbent</span>}
+                {s.incumbent && <span className="px-2 py-0.5 bg-brand-100 text-brand-700 rounded text-xs font-medium">Incumbent</span>}
               </div>
               <p className="text-sm text-slate-500 mt-1 font-mono">{s.supplier_id}</p>
             </div>
@@ -382,7 +411,7 @@ function FitScoreDetail({ supplier: s, allSuppliers }) {
           <>
             <div className="flex items-center gap-2 mb-2 flex-wrap">
               <p className="text-xs font-medium text-slate-600">Fit Score</p>
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700">
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-brand-100 text-brand-700">
                 {(s.composite_score * 100).toFixed(1)}%
               </span>
               {hasBonuses && (
@@ -738,7 +767,7 @@ function AuditPanel({ audit }) {
           <p className="text-xs text-slate-500 mb-1">Data Sources</p>
           <div className="flex flex-wrap gap-1">
             {audit.data_sources_used.map((d, i) => (
-              <span key={i} className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs">{d}</span>
+              <span key={i} className="px-2 py-0.5 bg-brand-50 text-brand-700 rounded text-xs">{d}</span>
             ))}
           </div>
         </div>
@@ -750,15 +779,15 @@ function AuditPanel({ audit }) {
         </div>
       )}
       {audit.parameter_overrides?.length > 0 && (
-        <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-          <p className="text-xs font-medium text-blue-700 mb-2">Parameter Overrides (user modified)</p>
+        <div className="p-3 bg-brand-50 rounded-lg border border-brand-200">
+          <p className="text-xs font-medium text-brand-700 mb-2">Parameter Overrides (user modified)</p>
           <div className="space-y-1">
             {audit.parameter_overrides.map((o, i) => (
               <div key={i} className="flex items-center gap-2 text-xs">
                 <span className="font-medium text-slate-700 w-28">{o.field.replace(/_/g, ' ')}</span>
                 <span className="text-slate-400 line-through">{o.original_value || '—'}</span>
                 <span className="text-slate-400">&rarr;</span>
-                <span className="font-medium text-blue-700">{o.new_value}</span>
+                <span className="font-medium text-brand-700">{o.new_value}</span>
               </div>
             ))}
           </div>

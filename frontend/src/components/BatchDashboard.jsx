@@ -92,7 +92,7 @@ export default function BatchDashboard({ onViewResult }) {
           <button
             onClick={runBatch}
             disabled={running}
-            className="px-5 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center gap-2"
+            className="px-5 py-2 bg-brand-500 text-white rounded-lg font-medium hover:bg-brand-700 disabled:opacity-50 transition-colors flex items-center gap-2"
           >
             {running ? (
               <>
@@ -115,7 +115,7 @@ export default function BatchDashboard({ onViewResult }) {
           </div>
           <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
             <div
-              className="bg-blue-500 h-full rounded-full transition-all duration-300"
+              className="bg-brand-500 h-full rounded-full transition-all duration-300"
               style={{ width: `${progress.total > 0 ? (progress.done / progress.total) * 100 : 0}%` }}
             ></div>
           </div>
@@ -146,7 +146,7 @@ export default function BatchDashboard({ onViewResult }) {
           <StatCard
             label="Avg Confidence"
             value={`${stats.avg_confidence}%`}
-            color="blue"
+            color="brand"
           />
         </div>
       )}
@@ -208,7 +208,7 @@ export default function BatchDashboard({ onViewResult }) {
                     <td className="px-4 py-2 text-center">
                       <button
                         onClick={() => onViewResult(r)}
-                        className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                        className="text-xs text-brand-500 hover:text-brand-700 font-medium"
                       >
                         View
                       </button>

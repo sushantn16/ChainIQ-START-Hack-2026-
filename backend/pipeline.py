@@ -860,10 +860,11 @@ def _detect_overrides(req: ProcessRequest, raw: dict | None) -> list[ParameterOv
 
 
 def _calc_days_until(date_str: str) -> int | None:
-    """Calculate days from now until the given YYYY-MM-DD date."""
+    """Calculate days from now until the given YYYY-MM-DD date. Minimum 0."""
     try:
         req_date = datetime.strptime(date_str, "%Y-%m-%d")
-        return (req_date - datetime.utcnow()).days
+        delta = (req_date - datetime.utcnow()).days
+        return max(0, delta)
     except (ValueError, TypeError):
         return None
 
@@ -903,13 +904,7 @@ def _build_interpretation(req: ProcessRequest, raw: dict | None) -> RequestInter
         # Post-LLM date fallback for existing requests with text
         if not required_by and (translated_text or request_text):
             required_by = extract_date_fallback(translated_text or request_text)
-        days_until = None
-        if required_by:
-            try:
-                req_date = datetime.strptime(required_by, "%Y-%m-%d")
-                days_until = (req_date - datetime.utcnow()).days
-            except (ValueError, TypeError):
-                pass
+        days_until = _calc_days_until(required_by) if required_by else None
 
         # Detect contradictions between structured fields and text
         contradictions = []
@@ -988,13 +983,7 @@ def _build_interpretation(req: ProcessRequest, raw: dict | None) -> RequestInter
         delivery = req.delivery_countries or ([req.country] if req.country else
                    llm_fields.get("delivery_countries") or [])
 
-        days_until = None
-        if required_by:
-            try:
-                req_date = datetime.strptime(required_by, "%Y-%m-%d")
-                days_until = (req_date - datetime.utcnow()).days
-            except (ValueError, TypeError):
-                pass
+        days_until = _calc_days_until(required_by) if required_by else None
 
         # Detect data residency / ESG from constraints, LLM fields, or raw text
         constraints = llm_fields.get("constraints") or []

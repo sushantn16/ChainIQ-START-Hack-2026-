@@ -51,6 +51,9 @@ IMPORTANT: For required_by_date, ALWAYS convert relative time expressions to a c
 - "within 1 month" → {today} + 30 days
 - "next week" → {today} + 7 days
 - "by end of Q2" → 2026-06-30
+- "ASAP" / "as soon as possible" / "immediately" → {today} + 3 days
+- "urgent" / "urgently needed" → {today} + 5 days
+- "tomorrow" → {today} + 1 day
 Never leave required_by_date as null if the text mentions ANY deadline or timeframe."""
 
 

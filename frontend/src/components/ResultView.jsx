@@ -30,7 +30,6 @@ export default function ResultView({ result }) {
           </div>
           <div className="text-right text-sm text-slate-500">
             <p>Processed: {new Date(r.processed_at).toLocaleString()}</p>
-            <p>Confidence: {(interp.extraction_confidence * 100).toFixed(0)}%</p>
           </div>
         </div>
         {rec.narrative && (

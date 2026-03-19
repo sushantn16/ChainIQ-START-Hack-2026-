@@ -1095,10 +1095,26 @@ def _build_recommendation(
                     f"(not eligible for this category/region)."
                 )
 
+        # Warn if no supplier can meet the deadline
+        all_infeasible = all(s.lead_time_feasible == "infeasible" for s in shortlist)
+        any_expedited_only = any(s.lead_time_feasible == "expedited_only" for s in shortlist)
+        if all_infeasible and interp.days_until_required is not None:
+            fastest = min(shortlist, key=lambda s: s.expedited_lead_time_days)
+            reason_parts.append(
+                f"WARNING: No supplier can deliver within the requested {interp.days_until_required} days. "
+                f"Fastest option is {fastest.supplier_name} at {fastest.expedited_lead_time_days} days (expedited). "
+                f"Consider extending the deadline or negotiating expedited terms directly."
+            )
+        elif any_expedited_only and not any(s.lead_time_feasible == "standard" for s in shortlist):
+            reason_parts.append(
+                f"Note: All suppliers require expedited delivery to meet the {interp.days_until_required}-day deadline. "
+                f"Expect premium pricing."
+            )
+
         if advisories:
             reason_parts.append(f"{len(advisories)} advisory note(s) for review.")
 
-        status = "recommend_with_escalation" if advisories else "recommend"
+        status = "recommend_with_escalation" if (advisories or all_infeasible) else "recommend"
         return Recommendation(
             status=status,
             reason=" ".join(reason_parts),

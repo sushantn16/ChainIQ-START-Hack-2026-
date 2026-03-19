@@ -39,6 +39,43 @@ export default function ResultView({ result }) {
         )}
       </div>
 
+      {/* Approval & Escalation Banners — shown above shortlist */}
+      {r.policy_evaluation?.approval_threshold && (
+        <div className="flex items-start gap-3 p-4 bg-purple-50 border border-purple-200 rounded-xl">
+          <span className="text-lg mt-0.5">🔒</span>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-purple-800">
+              Approval Required — {r.policy_evaluation.approval_threshold.rule_applied}
+            </p>
+            <p className="text-sm text-purple-700 mt-0.5">
+              {r.policy_evaluation.approval_threshold.basis}
+            </p>
+            <div className="flex flex-wrap gap-3 mt-2 text-xs text-purple-600">
+              <span>Approvers: <strong>{r.policy_evaluation.approval_threshold.approvers?.join(', ')}</strong></span>
+              <span>Quotes required: <strong>{r.policy_evaluation.approval_threshold.quotes_required}</strong></span>
+              {r.policy_evaluation.approval_threshold.deviation_approval && (
+                <span>Deviation approval: <strong>{r.policy_evaluation.approval_threshold.deviation_approval}</strong></span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {r.escalations.filter(e => e.blocking).length > 0 && (
+        <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
+          <span className="text-lg mt-0.5">🚫</span>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-red-800">Blocking Escalation</p>
+            {r.escalations.filter(e => e.blocking).map(e => (
+              <div key={e.escalation_id} className="mt-1">
+                <p className="text-sm text-red-700">{e.trigger}</p>
+                <p className="text-xs text-red-500 mt-0.5">Escalate to: <strong>{e.escalate_to}</strong> ({e.rule})</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Supplier Shortlist — primary output */}
       <Section
         title={`Supplier Shortlist`}

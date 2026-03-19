@@ -15,7 +15,7 @@ export default function ResultView({ result, onApplyScenario }) {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className={`${style.bg} ${style.border} border-l-4 border rounded-xl p-6`}>
+      <div className={`${style.bg} ${style.border} border rounded-xl p-6`}>
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-3 mb-2">
@@ -32,7 +32,7 @@ export default function ResultView({ result, onApplyScenario }) {
           </div>
         </div>
         {rec.narrative && (
-          <div className="mt-4 p-4 bg-[#f4f4f4] rounded-lg" style={{ borderLeft: `3px solid ${style.accent}` }}>
+          <div className="mt-4 p-4 bg-[#f4f4f4] rounded-lg">
             <p className="text-[10px] font-bold uppercase tracking-[1.5px] text-[#999] mb-1">Audit Narrative</p>
             <p className="text-sm text-[#555] whitespace-pre-wrap leading-relaxed">{rec.narrative}</p>
           </div>
@@ -41,7 +41,7 @@ export default function ResultView({ result, onApplyScenario }) {
 
       {/* Approval & Escalation Banners — shown above shortlist */}
       {r.policy_evaluation?.approval_threshold && (
-        <div className="flex items-start gap-3 p-5 border border-[#e0e0e0] bg-white rounded-xl" style={{ borderLeft: '4px solid #1a1a1a' }}>
+        <div className="flex items-start gap-3 p-5 border border-[#e0e0e0] bg-white rounded-xl">
           <span className="text-lg mt-0.5">🔒</span>
           <div className="flex-1">
             <p className="text-xs font-black uppercase tracking-[1px] text-[#1a1a1a]">

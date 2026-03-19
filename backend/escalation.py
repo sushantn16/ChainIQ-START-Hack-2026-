@@ -82,6 +82,33 @@ def evaluate_escalations(
             blocking=True,
         )
 
+    # ER-BUDGET: Top-ranked supplier exceeds stated budget — advisory
+    if budget and shortlist and shortlist[0].total_price > budget:
+        top = shortlist[0]
+        overage = top.total_price - budget
+        overage_pct = (overage / budget) * 100
+        # Check if any supplier is within budget
+        within_budget = [s for s in shortlist if s.total_price <= budget]
+        if within_budget:
+            alt = within_budget[0]
+            add_esc(
+                "ER-BUDGET",
+                f"Top-ranked supplier '{top.supplier_name}' costs {top.currency} {top.total_price:,.2f}, "
+                f"which is {overage_pct:.0f}% over the stated budget of {top.currency} {budget:,.2f}. "
+                f"'{alt.supplier_name}' (#{alt.rank}) fits within budget at {top.currency} {alt.total_price:,.2f}.",
+                "Procurement Manager",
+                blocking=False,
+            )
+        else:
+            add_esc(
+                "ER-BUDGET",
+                f"All shortlisted suppliers exceed the stated budget of {top.currency} {budget:,.2f}. "
+                f"Cheapest option is '{top.supplier_name}' at {top.currency} {top.total_price:,.2f} "
+                f"({overage_pct:.0f}% over). Consider increasing budget or adjusting requirements.",
+                "Procurement Manager",
+                blocking=False,
+            )
+
     # ER-006: Quantity exceeds supplier capacity — advisory
     capacity_risks = [s for s in shortlist if s.capacity_exceeded]
     if capacity_risks:

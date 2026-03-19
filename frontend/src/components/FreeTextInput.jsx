@@ -1,7 +1,7 @@
 import { useState } from 'react'
 
 const EXAMPLES = [
-  'We need 50 laptops for our Berlin office, budget around 75000 EUR, needed by 2026-06-01',
+  'We need 50 laptops in Zurich in a month with a max budget of 80000',
   'Brauchen 200 Docking Stations fur unsere Buros in Zurich und Munchen, Budget ca. 30000 CHF',
   'Nous avons besoin de 100 jours de conseil en cybersecurite pour notre equipe a Paris, budget 250000 EUR',
   'Need 20 ergonomic office chairs for the London office, delivery within 2 weeks',

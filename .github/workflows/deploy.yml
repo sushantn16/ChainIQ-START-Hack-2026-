@@ -27,21 +27,13 @@ jobs:
         run: |
           zip -r deploy.zip backend/ data/ frontend/dist/ requirements.txt startup.sh -x "backend/__pycache__/*"
 
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
       - name: Deploy to Azure App Service
-        env:
-          DEPLOY_USER: ${{ secrets.AZURE_DEPLOY_USER }}
-          DEPLOY_PASS: ${{ secrets.AZURE_DEPLOY_PASS }}
-        run: |
-          AUTH=$(printf '%s:%s' "$DEPLOY_USER" "$DEPLOY_PASS" | base64)
-          HTTP_STATUS=$(curl -s -o /tmp/deploy_response.txt -w "%{http_code}" -X POST \
-            -H "Authorization: Basic $AUTH" \
-            -H "Content-Type: application/zip" \
-            --data-binary @deploy.zip \
-            "https://chainiq-app.scm.azurewebsites.net/api/zipdeploy?isAsync=false")
-          echo "HTTP Status: $HTTP_STATUS"
-          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
-            echo "::error::Deploy failed with HTTP $HTTP_STATUS"
-            cat /tmp/deploy_response.txt
-            exit 1
-          fi
-          echo "Deploy successful"
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: chainiq-app
+          package: deploy.zip

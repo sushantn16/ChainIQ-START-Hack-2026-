@@ -65,7 +65,9 @@ Preserve all numbers, dates, supplier names, and technical terms exactly."""
 
 
 NARRATION_SYSTEM = """You are a procurement audit report writer. Generate concise, professional recommendation notes for supplier comparisons.
-Be specific: cite exact numbers, policy rules, and supplier names. Write for an auditor who needs to understand the decision without context."""
+Be specific: cite exact numbers, policy rules, and supplier names. Write for an auditor who needs to understand the decision without context.
+
+CRITICAL: The ranking is computed by a deterministic scoring algorithm. Rank #1 IS the recommendation. Your job is to EXPLAIN the decision, not to override or second-guess the ranking. Never recommend a supplier that is not ranked #1."""
 
 
 def extract_from_text(
@@ -184,20 +186,22 @@ def generate_overall_narrative(
                 f"(ranked #{inc_entry.rank}). Switching from incumbent — explain why."
             )
 
-    prompt = f"""Generate a concise audit-ready recommendation summary for this procurement request:
+    prompt = f"""Generate a concise audit-ready recommendation summary for this procurement request.
+
+IMPORTANT: Rank #1 is the recommended supplier. This ranking was computed by a weighted composite score (price 40%, quality 30%, risk 20%, lead time 10%). Do NOT recommend a different supplier. Your job is to explain WHY rank #1 won, not to pick a different winner.
 
 Request: {request_summary.get('category_l2', 'Unknown')} — {request_summary.get('quantity', '?')} units
 Budget: {request_summary.get('currency', '')} {request_summary.get('budget_amount', 'not specified')}
 Delivery: {', '.join(request_summary.get('delivery_countries', []))}
 
-Top suppliers:
-{chr(10).join(f"#{s.rank} {s.supplier_name}: {s.currency} {s.total_price:,.2f} (quality={s.quality_score}, risk={s.risk_score})" for s in shortlist[:3])}
+Ranked suppliers (rank #1 = recommendation):
+{chr(10).join(f"#{s.rank} {s.supplier_name}: {s.currency} {s.total_price:,.2f} (composite={s.composite_score:.4f}, quality={s.quality_score}, risk={s.risk_score})" for s in shortlist[:3])}
 {pref_context}
 
 Issues: {len(validation_issues)} validation issues, {len(escalations)} escalations
 Blocking: {any(e.blocking for e in escalations)}
 
-Write 2-3 sentences. Be specific with numbers and supplier names. If the recommended supplier differs from the preferred or incumbent, explain the trade-off clearly."""
+Write 2-3 sentences. Start with "Recommend awarding to {shortlist[0].supplier_name if shortlist else '?'}". Explain why it ranks first using the composite score breakdown. Compare briefly with runners-up."""
 
     result = call_claude_json(
         NARRATION_SYSTEM,

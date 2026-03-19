@@ -12,6 +12,10 @@ export default function App() {
   const [tab, setTab] = useState('Dashboard');
   const [processing, setProcessing] = useState(null);
   const [batchResult, setBatchResult] = useState(null);
+  const [batchResults, setBatchResults] = useState([]);
+  const [batchStats, setBatchStats] = useState(null);
+  const [batchProgress, setBatchProgress] = useState({ done: 0, total: 0, current: '' });
+  const [batchRunning, setBatchRunning] = useState(false);
 
   function handleProcess(payload) {
     setProcessing(payload);
@@ -77,7 +81,17 @@ export default function App() {
         ) : tab === 'New Request' ? (
           <FreeTextInput onProcess={handleProcess} />
         ) : tab === 'Batch' ? (
-          <BatchDashboard onViewResult={setBatchResult} />
+          <BatchDashboard
+            onViewResult={setBatchResult}
+            results={batchResults}
+            setResults={setBatchResults}
+            stats={batchStats}
+            setStats={setBatchStats}
+            progress={batchProgress}
+            setProgress={setBatchProgress}
+            running={batchRunning}
+            setRunning={setBatchRunning}
+          />
         ) : null}
       </main>
     </div>

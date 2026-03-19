@@ -1,11 +1,7 @@
 import { useState } from 'react'
 import { processRequestStreaming } from '../api'
 
-export default function BatchDashboard({ onViewResult }) {
-  const [running, setRunning] = useState(false);
-  const [results, setResults] = useState([]);
-  const [stats, setStats] = useState(null);
-  const [progress, setProgress] = useState({ done: 0, total: 0, current: '' });
+export default function BatchDashboard({ onViewResult, results, setResults, stats, setStats, progress, setProgress, running, setRunning }) {
   const [batchSize, setBatchSize] = useState(20);
 
   async function runBatch() {

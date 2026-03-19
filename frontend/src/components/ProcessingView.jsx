@@ -12,6 +12,7 @@ export default function ProcessingView({ payload, onBack }) {
   const [currentPayload, setCurrentPayload] = useState(payload);
   const startedRef = useRef(false);
   const [runCount, setRunCount] = useState(0);
+  const [appliedOverrides, setAppliedOverrides] = useState([]);
 
   function runPipeline(pl) {
     setSteps([]);
@@ -47,6 +48,52 @@ export default function ProcessingView({ payload, onBack }) {
     }
     setCurrentPayload(newPayload);
     setRunCount(prev => prev + 1);
+  }
+
+  function handleApplyScenario(scenario) {
+    // Build override payload from the what-if scenario
+    const interp = result?.request_interpretation || {};
+    const newPayload = {};
+
+    // Carry forward all existing interpretation fields
+    if (interp.category_l1) newPayload.category_l1 = interp.category_l1;
+    if (interp.category_l2) newPayload.category_l2 = interp.category_l2;
+    if (interp.quantity) newPayload.quantity = interp.quantity;
+    if (interp.budget_amount) newPayload.budget_amount = interp.budget_amount;
+    if (interp.currency) newPayload.currency = interp.currency;
+    if (interp.delivery_countries?.length) {
+      newPayload.delivery_countries = interp.delivery_countries;
+      newPayload.country = interp.delivery_countries[0];
+    }
+    if (interp.required_by_date) newPayload.required_by_date = interp.required_by_date;
+    if (interp.preferred_supplier_stated) newPayload.preferred_supplier_mentioned = interp.preferred_supplier_stated;
+
+    // Apply the scenario's suggested value
+    const param = scenario.parameter;
+    const suggestedValue = scenario.suggested_value;
+    if (param === 'budget_amount') newPayload.budget_amount = suggestedValue;
+    else if (param === 'quantity') newPayload.quantity = suggestedValue;
+    else if (param === 'days_until_required' && typeof suggestedValue === 'number') {
+      // Convert days to a date
+      const d = new Date();
+      d.setDate(d.getDate() + suggestedValue);
+      newPayload.required_by_date = d.toISOString().slice(0, 10);
+    }
+
+    // Track the override for audit
+    const override = {
+      field: param,
+      original_value: String(scenario.current_value ?? ''),
+      new_value: String(suggestedValue ?? ''),
+      scenario: scenario.scenario,
+      title: scenario.title,
+    };
+    setAppliedOverrides(prev => [...prev, override]);
+
+    // Pass overrides to the backend
+    newPayload.parameter_overrides = [...appliedOverrides, override];
+
+    handleReprocess(newPayload);
   }
 
   const missingFields = result?.missing_fields || [];
@@ -95,7 +142,13 @@ export default function ProcessingView({ payload, onBack }) {
             <div className="h-px flex-1 bg-slate-200"></div>
           </div>
           {/* Preview banner removed — results are always shown as final */}
-          <ResultView result={result} />
+          <ResultView
+            result={appliedOverrides.length > 0
+              ? { ...result, audit_trail: { ...result.audit_trail, parameter_overrides: [...(result.audit_trail?.parameter_overrides || []), ...appliedOverrides] } }
+              : result
+            }
+            onApplyScenario={handleApplyScenario}
+          />
         </div>
       )}
     </div>

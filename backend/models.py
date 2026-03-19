@@ -21,6 +21,7 @@ class ProcessRequest(BaseModel):
     quantity: Optional[int] = None
     required_by_date: Optional[str] = None
     preferred_supplier_mentioned: Optional[str] = None
+    parameter_overrides: Optional[list[dict]] = None
 
 
 # --- Output models ---

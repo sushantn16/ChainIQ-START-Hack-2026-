@@ -823,9 +823,18 @@ def _compute_missing_fields(
 
 def _detect_overrides(req: ProcessRequest, raw: dict | None) -> list[ParameterOverride]:
     """Detect which fields the user changed from the original request."""
-    if not raw:
-        return []
     overrides = []
+    # Include frontend-provided overrides (from what-if scenario apply)
+    if req.parameter_overrides:
+        for o in req.parameter_overrides:
+            overrides.append(ParameterOverride(
+                field=o.get("field", ""),
+                original_value=str(o.get("original_value", "")) if o.get("original_value") is not None else None,
+                new_value=str(o.get("new_value", "")) if o.get("new_value") is not None else None,
+            ))
+    if not raw:
+        return overrides
+    existing_fields = {o.field for o in overrides}
     checks = [
         ("quantity", req.quantity, raw.get("quantity")),
         ("budget_amount", req.budget_amount, raw.get("budget_amount")),
@@ -838,6 +847,8 @@ def _detect_overrides(req: ProcessRequest, raw: dict | None) -> list[ParameterOv
          ",".join(raw.get("delivery_countries", []))),
     ]
     for field, new_val, orig_val in checks:
+        if field in existing_fields:
+            continue
         if new_val is not None and str(new_val) != str(orig_val):
             overrides.append(ParameterOverride(
                 field=field,

@@ -6,7 +6,7 @@ const STATUS_STYLES = {
   cannot_proceed: { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-800', badge: 'bg-red-100 text-red-800', icon: '✕' },
 };
 
-export default function ResultView({ result }) {
+export default function ResultView({ result, onApplyScenario }) {
   const [expandedSection, setExpandedSection] = useState('recommendation');
   const r = result;
   const rec = r.recommendation;
@@ -156,7 +156,7 @@ export default function ResultView({ result }) {
           expanded={expandedSection === 'whatif'}
           onToggle={() => setExpandedSection(expandedSection === 'whatif' ? '' : 'whatif')}
         >
-          <WhatIfPanel scenarios={r.what_if} />
+          <WhatIfPanel scenarios={r.what_if} onApply={onApplyScenario} />
         </Section>
       )}
 
@@ -641,7 +641,7 @@ function EscalationPanel({ escalations }) {
   );
 }
 
-function WhatIfPanel({ scenarios }) {
+function WhatIfPanel({ scenarios, onApply }) {
   const SCENARIO_ICONS = {
     budget_increase: '💰',
     affordable_alternative: '💡',
@@ -652,6 +652,8 @@ function WhatIfPanel({ scenarios }) {
     volume_discount: '📈',
     choose_preferred: '⭐',
   };
+
+  const canApply = (s) => onApply && s.parameter && s.parameter !== 'supplier_choice' && s.parameter !== 'delivery_countries';
 
   return (
     <div className="space-y-3">
@@ -674,7 +676,17 @@ function WhatIfPanel({ scenarios }) {
                   <span className="font-medium text-amber-700">{typeof s.suggested_value === 'number' ? s.suggested_value.toLocaleString() : String(s.suggested_value)}</span>
                 </div>
               </div>
-              <p className="text-xs text-emerald-700 mt-2 font-medium">{s.impact}</p>
+              <div className="mt-2 flex items-center justify-between">
+                <p className="text-xs text-emerald-700 font-medium">{s.impact}</p>
+                {canApply(s) && (
+                  <button
+                    onClick={() => onApply(s)}
+                    className="px-3 py-1.5 bg-amber-600 text-white rounded-lg text-xs font-medium hover:bg-amber-700 transition-colors flex items-center gap-1.5"
+                  >
+                    Apply &amp; Re-run
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>

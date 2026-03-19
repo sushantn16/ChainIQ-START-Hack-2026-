@@ -177,7 +177,20 @@ def compute_composite_score(
     # Historical experience bonus (up to +0.05 for proven category track record)
     score += experience_score * 0.05
 
-    return round(score, 4)
+    return round(min(1.0, score), 4)
+
+
+def _fuzzy_name_match(supplier_name: str, user_name: str | None) -> bool:
+    """Check if user-provided name matches a supplier name.
+
+    Matches if all words in the user input appear in the supplier name (case-insensitive).
+    e.g. "AWS Enterprise" matches "AWS Enterprise EMEA".
+    """
+    if not user_name:
+        return False
+    user_words = set(user_name.lower().split())
+    supplier_words = set(supplier_name.lower().split())
+    return user_words.issubset(supplier_words)
 
 
 def score_and_rank_suppliers(
@@ -263,9 +276,9 @@ def score_and_rank_suppliers(
         hist_perf = pd["historical_performance"]
 
         is_on_policy_list = sup.get("preferred_supplier", False)
-        is_user_preferred = sup["supplier_name"] == preferred_supplier_name
+        is_user_preferred = _fuzzy_name_match(sup["supplier_name"], preferred_supplier_name)
         is_preferred = is_on_policy_list or is_user_preferred
-        is_incumbent = sup["supplier_name"] == incumbent_supplier_name
+        is_incumbent = _fuzzy_name_match(sup["supplier_name"], incumbent_supplier_name)
 
         score = compute_composite_score(
             total_price=pd["total_price"],

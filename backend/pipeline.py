@@ -967,7 +967,7 @@ def _build_interpretation(req: ProcessRequest, raw: dict | None) -> RequestInter
         budget = req.budget_amount or llm_fields.get("budget_amount") or llm_fields.get("text_budget")
         currency = req.currency or llm_fields.get("currency", "EUR")
         required_by = req.required_by_date or llm_fields.get("required_by_date") or llm_fields.get("text_date")
-        preferred = req.preferred_supplier_mentioned or llm_fields.get("preferred_supplier")
+        preferred = req.preferred_supplier_mentioned or llm_fields.get("preferred_supplier") or llm_fields.get("text_preferred_supplier")
         delivery = req.delivery_countries or ([req.country] if req.country else
                    llm_fields.get("delivery_countries", []))
 

@@ -101,6 +101,16 @@ class PolicyEvaluation(BaseModel):
     geography_rules_applied: list[GeographyRuleApplied] = []
 
 
+class RiskComposite(BaseModel):
+    country_risk: int = 0
+    delivery_risk: int = 0
+    baseline_risk: int = 0
+    total: int = 0
+    tier: str = "medium"  # low, medium, elevated, high
+    flags: list[str] = []
+    inputs: dict = {}
+
+
 class SupplierShortlistEntry(BaseModel):
     rank: int
     supplier_id: str
@@ -117,6 +127,7 @@ class SupplierShortlistEntry(BaseModel):
     expedited_total: float = 0.0
     quality_score: int = 0
     risk_score: int = 0
+    risk_composite: Optional[RiskComposite] = None
     esg_score: int = 0
     policy_compliant: bool = True
     covers_delivery_country: bool = True

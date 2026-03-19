@@ -93,6 +93,7 @@ def process_request(req: ProcessRequest) -> PipelineResult:
             esg_required=interp.esg_requirement,
             preferred_supplier_name=interp.preferred_supplier_stated,
             incumbent_supplier_name=interp.incumbent_supplier,
+            data_residency_required=interp.data_residency_required,
             store=store,
         )
     # --- Step 7b: Generate recommendation notes via LLM ---
@@ -408,6 +409,7 @@ def process_request_streaming(req: ProcessRequest):
             esg_required=interp.esg_requirement,
             preferred_supplier_name=interp.preferred_supplier_stated,
             incumbent_supplier_name=interp.incumbent_supplier,
+            data_residency_required=interp.data_residency_required,
             store=store,
         )
         if shortlist:

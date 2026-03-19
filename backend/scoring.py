@@ -5,7 +5,8 @@ Select pricing tiers, calculate costs, compute weighted composite scores, rank s
 
 from backend.data_loader import DataStore
 from backend.supplier_matcher import get_region_for_country
-from backend.models import SupplierShortlistEntry
+from backend.models import SupplierShortlistEntry, RiskComposite
+from backend.risk_scoring import compute_risk_composite
 
 
 def find_pricing_tier(
@@ -69,20 +70,17 @@ def compute_composite_score(
     total_price: float,
     all_prices: list[float],
     quality_score: int,
-    risk_score: int,
-    esg_score: int,
+    risk_total: int,
     lead_time_status: str,
     is_preferred: bool,
-    esg_required: bool,
     weights: dict | None = None,
 ) -> float:
     """
     Compute weighted composite score.
     Weights: price=0.40, quality=0.30, risk=0.20, lead=0.10 (sum to 1.00).
-    Preferred supplier gets a flat +0.05 additive bonus (breaks even at ~12.5% price premium).
+    Preferred supplier gets a flat +0.05 additive bonus.
 
-    ESG compliance is enforced as a hard filter in supplier_matcher (threshold 65).
-    It is not included in the composite score to avoid double-counting.
+    risk_total is the composite risk score (0-100) from risk_scoring module.
     """
     if weights is None:
         weights = {
@@ -107,7 +105,7 @@ def compute_composite_score(
     score = (
         weights["price"] * price_norm
         + weights["quality"] * (quality_score / 100)
-        + weights["risk"] * (1 - risk_score / 100)
+        + weights["risk"] * (1 - risk_total / 100)
         + weights["lead"] * lead_score
     )
 
@@ -128,6 +126,7 @@ def score_and_rank_suppliers(
     esg_required: bool,
     preferred_supplier_name: str | None,
     incumbent_supplier_name: str | None,
+    data_residency_required: bool,
     store: DataStore,
 ) -> list[SupplierShortlistEntry]:
     """Price, score, and rank all candidate suppliers.
@@ -166,6 +165,14 @@ def score_and_rank_suppliers(
 
         tier_label = f"{tier['min_quantity']}–{tier['max_quantity']} units"
 
+        # Compute composite risk score
+        risk_comp = compute_risk_composite(
+            supplier=sup,
+            delivery_countries=delivery_countries,
+            data_residency_required=data_residency_required,
+            historical_awards=store.historical_awards,
+        )
+
         price_data.append({
             "supplier": sup,
             "tier": tier,
@@ -173,12 +180,14 @@ def score_and_rank_suppliers(
             "expedited_total": expedited_total,
             "lead_status": lead_status,
             "tier_label": tier_label,
+            "risk_composite": risk_comp,
         })
 
     # Second pass: compute composite scores
     for pd in price_data:
         sup = pd["supplier"]
         tier = pd["tier"]
+        risk_comp = pd["risk_composite"]
 
         is_preferred = sup.get("preferred_supplier", False) or sup["supplier_name"] == preferred_supplier_name
         is_incumbent = sup["supplier_name"] == incumbent_supplier_name
@@ -187,11 +196,9 @@ def score_and_rank_suppliers(
             total_price=pd["total_price"],
             all_prices=all_prices,
             quality_score=sup["quality_score"],
-            risk_score=sup["risk_score"],
-            esg_score=sup["esg_score"],
+            risk_total=risk_comp["total"],
             lead_time_status=pd["lead_status"],
             is_preferred=is_preferred,
-            esg_required=esg_required,
         )
 
         entry = SupplierShortlistEntry(
@@ -209,7 +216,11 @@ def score_and_rank_suppliers(
             expedited_unit_price=tier["expedited_unit_price"],
             expedited_total=pd["expedited_total"],
             quality_score=sup["quality_score"],
-            risk_score=sup["risk_score"],
+            risk_score=risk_comp["total"],
+            risk_composite=RiskComposite(**{
+                k: risk_comp[k] for k in
+                ["country_risk", "delivery_risk", "baseline_risk", "total", "tier", "flags", "inputs"]
+            }),
             esg_score=sup["esg_score"],
             lead_time_feasible=pd["lead_status"],
             composite_score=score,

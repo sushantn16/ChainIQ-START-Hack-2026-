@@ -287,7 +287,7 @@ function ShortlistPanel({ shortlist }) {
           <div className="mt-3 grid grid-cols-5 gap-3">
             <ScoreBadge label="Composite" value={s.composite_score} max={1} format={v => v.toFixed(4)} />
             <ScoreBadge label="Quality" value={s.quality_score} max={100} />
-            <ScoreBadge label="Risk" value={s.risk_score} max={100} invert />
+            <RiskBadge riskScore={s.risk_score} riskComposite={s.risk_composite} />
             <ScoreBadge label="ESG" value={s.esg_score} max={100} />
             <div>
               <p className="text-xs text-slate-500">Lead Time</p>
@@ -301,6 +301,11 @@ function ShortlistPanel({ shortlist }) {
               <p className="text-xs text-slate-400 mt-0.5">{s.standard_lead_time_days}d / {s.expedited_lead_time_days}d exp</p>
             </div>
           </div>
+
+          {/* Risk Composite Breakdown */}
+          {s.risk_composite && (
+            <RiskCompositeDetail rc={s.risk_composite} />
+          )}
 
           {/* Recommendation Note */}
           {s.recommendation_note && (
@@ -327,6 +332,67 @@ function ScoreBadge({ label, value, max, invert = false, format }) {
       <p className={`text-sm font-semibold ${color}`}>
         {format ? format(value) : value}{max === 100 ? '/100' : ''}
       </p>
+    </div>
+  );
+}
+
+const RISK_TIER_STYLES = {
+  low:      { bg: 'bg-emerald-100', text: 'text-emerald-700' },
+  medium:   { bg: 'bg-amber-100', text: 'text-amber-700' },
+  elevated: { bg: 'bg-orange-100', text: 'text-orange-700' },
+  high:     { bg: 'bg-red-100', text: 'text-red-700' },
+};
+
+function RiskBadge({ riskScore, riskComposite }) {
+  const tier = riskComposite?.tier || 'medium';
+  const ts = RISK_TIER_STYLES[tier] || RISK_TIER_STYLES.medium;
+  return (
+    <div>
+      <p className="text-xs text-slate-500">Risk</p>
+      <div className="flex items-center gap-1.5">
+        <p className={`text-sm font-semibold ${riskScore > 65 ? 'text-red-700' : riskScore > 45 ? 'text-amber-700' : 'text-emerald-700'}`}>
+          {riskScore}/100
+        </p>
+        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${ts.bg} ${ts.text}`}>
+          {tier}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function RiskCompositeDetail({ rc }) {
+  const bars = [
+    { label: 'Country', value: rc.country_risk, max: 40, color: 'bg-blue-500' },
+    { label: 'Delivery', value: rc.delivery_risk, max: 40, color: 'bg-purple-500' },
+    { label: 'Baseline', value: rc.baseline_risk, max: 30, color: 'bg-slate-500' },
+  ];
+  return (
+    <div className="mt-2 p-3 bg-slate-50 rounded border border-slate-100">
+      <div className="flex items-center gap-2 mb-2">
+        <p className="text-xs font-medium text-slate-600">Risk Breakdown</p>
+        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${(RISK_TIER_STYLES[rc.tier] || RISK_TIER_STYLES.medium).bg} ${(RISK_TIER_STYLES[rc.tier] || RISK_TIER_STYLES.medium).text}`}>
+          {rc.tier} ({rc.total}/100)
+        </span>
+      </div>
+      <div className="space-y-1.5">
+        {bars.map(b => (
+          <div key={b.label} className="flex items-center gap-2">
+            <span className="text-[10px] text-slate-500 w-14">{b.label}</span>
+            <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
+              <div className={`h-full ${b.color} rounded-full`} style={{ width: `${(b.value / b.max) * 100}%` }} />
+            </div>
+            <span className="text-[10px] text-slate-500 w-8 text-right">{b.value}/{b.max}</span>
+          </div>
+        ))}
+      </div>
+      {rc.flags && rc.flags.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {rc.flags.map((f, i) => (
+            <span key={i} className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded text-[10px]">{f}</span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

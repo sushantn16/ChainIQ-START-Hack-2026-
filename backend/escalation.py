@@ -101,6 +101,19 @@ def evaluate_escalations(
             blocking=False,
         )
 
+    # ER-RISK: Top-ranked supplier has elevated/high risk tier — advisory
+    if shortlist and shortlist[0].risk_composite:
+        rc = shortlist[0].risk_composite
+        if rc.tier in ("elevated", "high"):
+            flag_summary = "; ".join(rc.flags[:2]) if rc.flags else f"composite risk {rc.total}/100"
+            add_esc(
+                "ER-RISK",
+                f"Top-ranked supplier '{shortlist[0].supplier_name}' has {rc.tier} risk "
+                f"(score {rc.total}/100). {flag_summary}.",
+                "Risk & Compliance Lead" if rc.tier == "high" else "Sourcing Excellence Lead",
+                blocking=False,
+            )
+
     # ER-008: Delivery in regulated non-EU markets — advisory
     non_eu_countries = {"US", "CA", "BR", "MX", "SG", "AU", "IN", "JP", "UAE", "ZA"}
     regulated = [c for c in delivery_countries if c in non_eu_countries]

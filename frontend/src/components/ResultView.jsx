@@ -394,8 +394,8 @@ function FitScoreDetail({ supplier: s, allSuppliers }) {
   const riskNorm = 1 - s.risk_score / 100;
 
   const factors = [
-    { label: 'Price', weight: 40, score: priceNorm, color: 'bg-emerald-500' },
-    { label: 'Quality', weight: 30, score: qualityNorm, color: 'bg-blue-500' },
+    { label: 'Price', weight: 35, score: priceNorm, color: 'bg-emerald-500' },
+    { label: 'Quality', weight: 35, score: qualityNorm, color: 'bg-blue-500' },
     { label: 'Risk', weight: 20, score: riskNorm, color: 'bg-amber-500' },
     { label: 'Lead Time', weight: 10, score: leadNorm, color: 'bg-purple-500' },
   ];

@@ -790,6 +790,15 @@ def _compute_missing_fields(
     return deduped
 
 
+def _calc_days_until(date_str: str) -> int | None:
+    """Calculate days from now until the given YYYY-MM-DD date."""
+    try:
+        req_date = datetime.strptime(date_str, "%Y-%m-%d")
+        return (req_date - datetime.utcnow()).days
+    except (ValueError, TypeError):
+        return None
+
+
 def _build_interpretation(req: ProcessRequest, raw: dict | None) -> RequestInterpretation:
     """Build the request interpretation from either raw data or free-text input.
     Uses LLM for translation (non-English) and extraction (free-text)."""
@@ -850,19 +859,20 @@ def _build_interpretation(req: ProcessRequest, raw: dict | None) -> RequestInter
         # Only lower if LLM found contradictions
         confidence = 0.9 if contradictions else 1.0
 
+        # User-provided overrides (from reprocess) take priority over raw data
         return RequestInterpretation(
-            category_l1=raw.get("category_l1"),
-            category_l2=raw.get("category_l2"),
-            quantity=raw.get("quantity"),
+            category_l1=req.category_l1 or raw.get("category_l1"),
+            category_l2=req.category_l2 or raw.get("category_l2"),
+            quantity=req.quantity if req.quantity is not None else raw.get("quantity"),
             unit_of_measure=raw.get("unit_of_measure"),
-            budget_amount=raw.get("budget_amount"),
-            currency=raw.get("currency"),
-            delivery_countries=raw.get("delivery_countries", []),
-            required_by_date=required_by,
-            days_until_required=days_until,
+            budget_amount=req.budget_amount if req.budget_amount is not None else raw.get("budget_amount"),
+            currency=req.currency or raw.get("currency"),
+            delivery_countries=req.delivery_countries if req.delivery_countries else raw.get("delivery_countries", []),
+            required_by_date=req.required_by_date or required_by,
+            days_until_required=_calc_days_until(req.required_by_date) if req.required_by_date else days_until,
             data_residency_required=raw.get("data_residency_constraint", False),
             esg_requirement=raw.get("esg_requirement", False),
-            preferred_supplier_stated=raw.get("preferred_supplier_mentioned"),
+            preferred_supplier_stated=req.preferred_supplier_mentioned or raw.get("preferred_supplier_mentioned"),
             incumbent_supplier=raw.get("incumbent_supplier"),
             original_language=original_language,
             translated_text=translated_text,

@@ -1,0 +1,11 @@
+node_modules
+frontend/node_modules
+.git
+__pycache__
+*.pyc
+Archive.zip
+viz_*.html
+data_explorer.html
+PLAN.md
+*.md
+!README.md

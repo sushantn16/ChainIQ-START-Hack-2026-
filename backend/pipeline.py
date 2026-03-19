@@ -860,11 +860,11 @@ def _detect_overrides(req: ProcessRequest, raw: dict | None) -> list[ParameterOv
 
 
 def _calc_days_until(date_str: str) -> int | None:
-    """Calculate days from now until the given YYYY-MM-DD date. Minimum 0."""
+    """Calculate calendar days from today until the given YYYY-MM-DD date. Minimum 0."""
     try:
-        req_date = datetime.strptime(date_str, "%Y-%m-%d")
-        delta = (req_date - datetime.utcnow()).days
-        return max(0, delta)
+        req_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        today = datetime.utcnow().date()
+        return max(0, (req_date - today).days)
     except (ValueError, TypeError):
         return None
 

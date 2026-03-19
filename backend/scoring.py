@@ -149,9 +149,11 @@ def compute_composite_score(
             "lead": 0.10,
         }
 
-    # Normalize price (lower = better)
-    if all_prices and max(all_prices) > min(all_prices):
-        price_norm = 1.0 - (total_price - min(all_prices)) / (max(all_prices) - min(all_prices))
+    # Normalize price (lower = better) using ratio to cheapest
+    # This avoids harsh 0/100 swings with few suppliers — a supplier 10% more
+    # expensive than the cheapest still scores ~91% rather than 0%.
+    if all_prices and min(all_prices) > 0:
+        price_norm = min(all_prices) / total_price
     elif all_prices:
         price_norm = 1.0
     else:

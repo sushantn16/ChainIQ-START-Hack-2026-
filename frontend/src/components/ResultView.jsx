@@ -322,8 +322,7 @@ function ScoreBadge({ label, value, max, invert = false, format }) {
 function FitScoreDetail({ supplier: s, allSuppliers }) {
   const prices = allSuppliers.map(x => x.total_price);
   const minP = Math.min(...prices);
-  const maxP = Math.max(...prices);
-  const priceNorm = maxP > minP ? 1 - (s.total_price - minP) / (maxP - minP) : 1;
+  const priceNorm = minP > 0 ? minP / s.total_price : 1;
   const leadScores = { standard: 1, expedited_only: 0.5, infeasible: 0 };
   const leadNorm = leadScores[s.lead_time_feasible] ?? 0.5;
   const qualityNorm = s.quality_score / 100;

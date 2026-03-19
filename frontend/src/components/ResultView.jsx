@@ -9,7 +9,6 @@ const STATUS_STYLES = {
 export default function ResultView({ result }) {
   const [expandedSection, setExpandedSection] = useState('recommendation');
   const r = result;
-  const interp = r.request_interpretation;
   const rec = r.recommendation;
   const style = STATUS_STYLES[rec.status] || STATUS_STYLES.cannot_proceed;
 
@@ -40,7 +39,7 @@ export default function ResultView({ result }) {
         )}
       </div>
 
-      {/* Supplier Shortlist — primary output, always visible first */}
+      {/* Supplier Shortlist — primary output */}
       <Section
         title={`Supplier Shortlist`}
         badge={r.supplier_shortlist.length || null}
@@ -49,25 +48,6 @@ export default function ResultView({ result }) {
         onToggle={() => setExpandedSection(expandedSection === 'recommendation' ? '' : 'recommendation')}
       >
         <ShortlistPanel shortlist={r.supplier_shortlist} />
-      </Section>
-
-      {/* Supporting sections */}
-      <Section
-        title="Request Interpretation"
-        expanded={expandedSection === 'interpretation'}
-        onToggle={() => setExpandedSection(expandedSection === 'interpretation' ? '' : 'interpretation')}
-      >
-        <InterpretationPanel interp={interp} />
-      </Section>
-
-      <Section
-        title={`Validation — ${r.validation.completeness === 'pass' ? 'Passed' : 'Issues Found'}`}
-        badge={r.validation.issues_detected.length || null}
-        badgeColor={r.validation.completeness === 'pass' ? 'emerald' : 'red'}
-        expanded={expandedSection === 'validation'}
-        onToggle={() => setExpandedSection(expandedSection === 'validation' ? '' : 'validation')}
-      >
-        <ValidationPanel validation={r.validation} />
       </Section>
 
       {r.supplier_discovery?.triggered && (

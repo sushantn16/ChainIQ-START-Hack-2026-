@@ -70,17 +70,7 @@ export default function ResultView({ result }) {
         <ShortlistPanel shortlist={r.supplier_shortlist} />
       </Section>
 
-      {r.suppliers_excluded.length > 0 && (
-        <Section
-          title="Excluded Suppliers"
-          badge={r.suppliers_excluded.length}
-          badgeColor="slate"
-          expanded={expandedSection === 'excluded'}
-          onToggle={() => setExpandedSection(expandedSection === 'excluded' ? '' : 'excluded')}
-        >
-          <ExcludedPanel excluded={r.suppliers_excluded} />
-        </Section>
-      )}
+      {/* Excluded suppliers are visible in the Pipeline Thinking audit trail */}
 
       {r.supplier_discovery?.triggered && (
         <Section

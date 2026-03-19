@@ -320,27 +320,110 @@ def _regex_extract(request_text: str, existing_fields: dict) -> dict:
 
     # Date extraction — handles ISO dates, relative dates, and natural language
     now = datetime.utcnow()
+    _word_to_num = {
+        "a": 1, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+        "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+        "eleven": 11, "twelve": 12, "couple": 2, "few": 3,
+    }
+    _month_names = {
+        "january": 1, "february": 2, "march": 3, "april": 4,
+        "may": 5, "june": 6, "july": 7, "august": 8,
+        "september": 9, "october": 10, "november": 11, "december": 12,
+        "jan": 1, "feb": 2, "mar": 3, "apr": 4,
+        "jun": 6, "jul": 7, "aug": 8, "sep": 9,
+        "oct": 10, "nov": 11, "dec": 12,
+    }
+    _NUM_WORDS = "a|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|couple|few"
 
-    # ISO date
+    detected_date = None
+
+    # 1. ISO date: 2026-04-15
     iso_match = re.search(r'(\d{4}-\d{2}-\d{2})', text)
     if iso_match:
-        result["required_by_date"] = iso_match.group(1)
-    else:
-        # Relative date patterns: "in 2 weeks", "within 1 month", "in 30 days", "next week"
+        detected_date = iso_match.group(1)
+
+    # 2. Slash date: 03/25/2026 or 25/03/2026
+    if not detected_date:
+        slash_match = re.search(r'(\d{1,2})/(\d{1,2})/(\d{4})', text)
+        if slash_match:
+            a, b, year = int(slash_match.group(1)), int(slash_match.group(2)), int(slash_match.group(3))
+            if a > 12:  # DD/MM/YYYY
+                detected_date = f"{year}-{b:02d}-{a:02d}"
+            else:  # MM/DD/YYYY
+                detected_date = f"{year}-{a:02d}-{b:02d}"
+
+    # 3. Natural date: "March 25", "25 March 2026", "March 25, 2026"
+    if not detected_date:
+        month_names_re = "|".join(_month_names.keys())
+        # "25 March 2026" or "25 March"
+        m = re.search(rf'(\d{{1,2}})\s+({month_names_re})(?:\s+(\d{{4}}))?', text, re.IGNORECASE)
+        if not m:
+            # "March 25, 2026" or "March 25"
+            m = re.search(rf'({month_names_re})\s+(\d{{1,2}})(?:\s*,?\s*(\d{{4}}))?', text, re.IGNORECASE)
+            if m:
+                month_num = _month_names[m.group(1).lower()]
+                day = int(m.group(2))
+                year = int(m.group(3)) if m.group(3) else now.year
+        else:
+            day = int(m.group(1))
+            month_num = _month_names[m.group(2).lower()]
+            year = int(m.group(3)) if m.group(3) else now.year
+        if m:
+            try:
+                d = datetime(year, month_num, day)
+                if d < now:
+                    d = d.replace(year=now.year + 1)
+                detected_date = d.strftime("%Y-%m-%d")
+            except (ValueError, UnboundLocalError):
+                pass
+
+    # 4. "by end of March", "by April", "by end of Q2"
+    if not detected_date:
+        m = re.search(rf'(?:by|before|until)\s+(?:end\s+of\s+)?({"|".join(_month_names.keys())})', text, re.IGNORECASE)
+        if m:
+            month_num = _month_names[m.group(1).lower()]
+            year = now.year if month_num >= now.month else now.year + 1
+            import calendar
+            last_day = calendar.monthrange(year, month_num)[1]
+            detected_date = f"{year}-{month_num:02d}-{last_day:02d}"
+
+    if not detected_date:
+        m = re.search(r'(?:by|before)\s+(?:end\s+of\s+)?Q([1-4])\s*(\d{4})?', text, re.IGNORECASE)
+        if m:
+            q = int(m.group(1))
+            year = int(m.group(2)) if m.group(2) else now.year
+            month = q * 3
+            import calendar
+            last_day = calendar.monthrange(year, month)[1]
+            detected_date = f"{year}-{month:02d}-{last_day:02d}"
+
+    # 5. Relative: "in 2 weeks", "in two weeks", "within about 3 days", "in a couple of weeks"
+    if not detected_date:
         relative_patterns = [
-            (r'(?:in|within|next)\s+(\d+)\s*(week|weeks|month|months|day|days)', None),
-            (r'(?:in|within)\s+(?:a|one|1)\s*(week|month)', 1),
-            (r'next\s*(week|month)', 1),
+            rf'(?:in|within)\s+(?:about|approximately|approx\.?|around|~)?\s*(\d+)\s*(week|weeks|month|months|day|days)',
+            rf'(?:in|within)\s+(?:about|approximately|approx\.?|around|~)?\s*({_NUM_WORDS})\s*(?:of\s*)?(week|weeks|month|months|day|days)',
+            rf'(?:in|within)\s+(?:a\s+)?(?:couple|few)\s+(?:of\s+)?(week|weeks|month|months|day|days)',
+            r'next\s*(week|month)',
         ]
-        for pattern, fixed_num in relative_patterns:
-            match = re.search(pattern, text)
+        for pattern in relative_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
             if match:
-                if fixed_num is not None:
-                    num = fixed_num
-                    unit = match.group(1)
+                groups = match.groups()
+                if len(groups) == 1:
+                    # "next week/month"
+                    num = 1
+                    unit = groups[0]
+                elif len(groups) == 2:
+                    raw_num = groups[0]
+                    unit = groups[1]
+                    num = _word_to_num.get(raw_num.lower()) if raw_num.lower() in _word_to_num else None
+                    if num is None:
+                        try:
+                            num = int(raw_num)
+                        except ValueError:
+                            continue
                 else:
-                    num = int(match.group(1))
-                    unit = match.group(2)
+                    continue
 
                 if unit.startswith("week"):
                     delta = timedelta(days=num * 7)
@@ -349,9 +432,20 @@ def _regex_extract(request_text: str, existing_fields: dict) -> dict:
                 else:
                     delta = timedelta(days=num)
 
-                future = now + delta
-                result["required_by_date"] = future.strftime("%Y-%m-%d")
+                detected_date = (now + delta).strftime("%Y-%m-%d")
                 break
+
+    # 6. Special keywords: ASAP, tomorrow, today
+    if not detected_date:
+        if re.search(r'\basap\b|as\s+soon\s+as\s+possible', text, re.IGNORECASE):
+            detected_date = (now + timedelta(days=3)).strftime("%Y-%m-%d")
+        elif re.search(r'\btomorrow\b', text, re.IGNORECASE):
+            detected_date = (now + timedelta(days=1)).strftime("%Y-%m-%d")
+        elif re.search(r'\burgent\b', text, re.IGNORECASE) and not detected_date:
+            detected_date = (now + timedelta(days=5)).strftime("%Y-%m-%d")
+
+    if detected_date:
+        result["required_by_date"] = detected_date
 
     # Supplier name extraction (look for known patterns)
     supplier_patterns = [

@@ -904,11 +904,10 @@ def _build_interpretation(req: ProcessRequest, raw: dict | None) -> RequestInter
         if not required_by and (translated_text or request_text):
             required_by = extract_date_fallback(translated_text or request_text)
         days_until = None
-        if required_by and raw.get("created_at"):
+        if required_by:
             try:
-                created = datetime.fromisoformat(raw["created_at"].replace("Z", ""))
                 req_date = datetime.strptime(required_by, "%Y-%m-%d")
-                days_until = (req_date - created).days
+                days_until = (req_date - datetime.utcnow()).days
             except (ValueError, TypeError):
                 pass
 
@@ -978,8 +977,8 @@ def _build_interpretation(req: ProcessRequest, raw: dict | None) -> RequestInter
         # Merge: user-provided fields take priority, LLM fills gaps
         category_l1 = req.category_l1 or llm_fields.get("category_l1")
         category_l2 = req.category_l2 or llm_fields.get("category_l2")
-        quantity = req.quantity or llm_fields.get("quantity") or llm_fields.get("text_quantity")
-        budget = req.budget_amount or llm_fields.get("budget_amount") or llm_fields.get("text_budget")
+        quantity = req.quantity if req.quantity is not None else (llm_fields.get("quantity") or llm_fields.get("text_quantity"))
+        budget = req.budget_amount if req.budget_amount is not None else (llm_fields.get("budget_amount") or llm_fields.get("text_budget"))
         currency = req.currency or llm_fields.get("currency", "EUR")
         required_by = req.required_by_date or llm_fields.get("required_by_date") or llm_fields.get("text_date")
         # Post-LLM date fallback: if LLM didn't resolve a relative date, try regex
@@ -997,6 +996,16 @@ def _build_interpretation(req: ProcessRequest, raw: dict | None) -> RequestInter
             except (ValueError, TypeError):
                 pass
 
+        # Detect data residency / ESG from constraints, LLM fields, or raw text
+        constraints = llm_fields.get("constraints") or []
+        all_text = (request_text + " " + " ".join(constraints)).lower()
+        data_residency = (
+            "data residen" in all_text
+            or "data must remain" in all_text
+            or "data sovereignty" in all_text
+        )
+        esg_req = "esg" in all_text or "sustainab" in all_text
+
         return RequestInterpretation(
             category_l1=category_l1,
             category_l2=category_l2,
@@ -1006,10 +1015,13 @@ def _build_interpretation(req: ProcessRequest, raw: dict | None) -> RequestInter
             delivery_countries=delivery,
             required_by_date=required_by,
             days_until_required=days_until,
+            data_residency_required=data_residency,
+            esg_requirement=esg_req,
             preferred_supplier_stated=preferred,
+            incumbent_supplier=llm_fields.get("incumbent_supplier"),
             extraction_confidence=confidence,
             flexibility_signals=llm_fields.get("flexibility_signals"),
-            constraints=llm_fields.get("constraints"),
+            constraints=constraints,
         )
 
 

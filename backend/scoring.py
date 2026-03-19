@@ -97,10 +97,10 @@ def compute_historical_performance(
     cat_bids_count = len(cat_bids)
     esc_rate = len(escalated) / cat_bids_count if cat_bids_count > 0 else 0
 
-    savings = [a["savings_pct"] for a in wins if a.get("savings_pct")]
+    savings = [a["savings_pct"] for a in wins if a.get("savings_pct") is not None]
     avg_savings = sum(savings) / len(savings) if savings else 0
 
-    lead_times = [a["lead_time_days"] for a in wins if a.get("lead_time_days")]
+    lead_times = [a["lead_time_days"] for a in wins if a.get("lead_time_days") is not None and a["lead_time_days"] > 0]
     avg_lead = sum(lead_times) / len(lead_times) if lead_times else 0
 
     # Experience score components
@@ -241,12 +241,20 @@ def score_and_rank_suppliers(
 
         tier_label = f"{tier['min_quantity']}–{tier['max_quantity']} units"
 
-        # Compute composite risk score
+        # Compute composite risk score — look up restriction scope for this supplier
+        restriction_scope = None
+        for r in store.policies.get("restricted_suppliers", []):
+            if (r["supplier_id"] == sup["supplier_id"]
+                and r["category_l1"] == category_l1
+                and r["category_l2"] == category_l2):
+                restriction_scope = r.get("restriction_scope", [])
+                break
         risk_comp = compute_risk_composite(
             supplier=sup,
             delivery_countries=delivery_countries,
             data_residency_required=data_residency_required,
             historical_awards=store.historical_awards,
+            restriction_scope=restriction_scope,
         )
 
         # Compute historical performance

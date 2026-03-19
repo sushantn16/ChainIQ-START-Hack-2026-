@@ -72,6 +72,8 @@ def evaluate_escalations(
         )
 
     # ER-005: Data residency constraint cannot be satisfied — TRUE compliance block
+    # Note: supplier_matcher already excludes non-data-residency suppliers when required,
+    # so an empty shortlist with data_residency_required means no supplier can satisfy it.
     if data_residency_required and not shortlist:
         add_esc(
             "ER-005",
@@ -93,7 +95,7 @@ def evaluate_escalations(
         )
 
     # ER-007: Brand safety (Marketing / Influencer) — advisory
-    if category_l1 == "Marketing" and category_l2 == "Influencer Campaign Management":
+    if (category_l1 or "").lower() == "marketing" and (category_l2 or "").lower() == "influencer campaign management":
         add_esc(
             "ER-007",
             "Influencer campaign requires brand-safety review before final award.",

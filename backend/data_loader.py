@@ -62,10 +62,10 @@ def _normalize_thresholds(policies: dict) -> dict:
                 t["deviation_approval_required_from"] = ["CPO"]
             elif "head_of_strategic_sourcing" in managed:
                 t["deviation_approval_required_from"] = ["Head of Strategic Sourcing"]
-            elif "procurement" in managed:
-                t["deviation_approval_required_from"] = ["Head of Category"]
             elif "procurement" in managed and "business" in managed:
                 t["deviation_approval_required_from"] = ["Procurement Manager"]
+            elif "procurement" in managed:
+                t["deviation_approval_required_from"] = ["Head of Category"]
             else:
                 t["deviation_approval_required_from"] = []
         # Normalize max_amount null to large number

@@ -184,7 +184,9 @@ def score_and_rank_suppliers(
         sup = pd["supplier"]
         tier = pd["tier"]
 
-        is_pref = sup["supplier_name"] == preferred_supplier_name or sup.get("preferred_supplier", False)
+        is_on_preferred_list = sup.get("preferred_supplier", False)
+        is_user_preferred = sup["supplier_name"] == preferred_supplier_name
+        is_pref = is_on_preferred_list or is_user_preferred
         is_incumbent = sup["supplier_name"] == incumbent_supplier_name
 
         score = compute_composite_score(

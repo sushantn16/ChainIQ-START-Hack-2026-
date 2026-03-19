@@ -140,10 +140,39 @@ def generate_overall_narrative(
     shortlist: list,
     escalations: list,
     validation_issues: list,
+    preferred_supplier_name: str | None = None,
+    incumbent_supplier_name: str | None = None,
 ) -> str:
     """Generate overall recommendation narrative."""
     if not is_available():
-        return _template_overall(request_summary, shortlist, escalations, validation_issues)
+        return _template_overall(
+            request_summary, shortlist, escalations, validation_issues,
+            preferred_supplier_name, incumbent_supplier_name,
+        )
+
+    # Build preferred/incumbent context for the LLM
+    pref_context = ""
+    winner_name = shortlist[0].supplier_name if shortlist else None
+    if preferred_supplier_name and preferred_supplier_name != winner_name:
+        pref_entry = next((s for s in shortlist if s.supplier_name == preferred_supplier_name), None)
+        if pref_entry:
+            pref_context += (
+                f"\nStated preferred supplier: {preferred_supplier_name} "
+                f"(ranked #{pref_entry.rank} at {pref_entry.currency} {pref_entry.total_price:,.2f}). "
+                f"NOT the top recommendation — explain why."
+            )
+        else:
+            pref_context += (
+                f"\nStated preferred supplier: {preferred_supplier_name} — "
+                f"was excluded during matching. Explain this."
+            )
+    if incumbent_supplier_name and incumbent_supplier_name != winner_name and incumbent_supplier_name != preferred_supplier_name:
+        inc_entry = next((s for s in shortlist if s.supplier_name == incumbent_supplier_name), None)
+        if inc_entry:
+            pref_context += (
+                f"\nIncumbent supplier: {incumbent_supplier_name} "
+                f"(ranked #{inc_entry.rank}). Switching from incumbent — explain why."
+            )
 
     prompt = f"""Generate a concise audit-ready recommendation summary for this procurement request:
 
@@ -153,11 +182,12 @@ Delivery: {', '.join(request_summary.get('delivery_countries', []))}
 
 Top suppliers:
 {chr(10).join(f"#{s.rank} {s.supplier_name}: {s.currency} {s.total_price:,.2f} (quality={s.quality_score}, risk={s.risk_score})" for s in shortlist[:3])}
+{pref_context}
 
 Issues: {len(validation_issues)} validation issues, {len(escalations)} escalations
 Blocking: {any(e.blocking for e in escalations)}
 
-Write 2-3 sentences. Be specific with numbers and supplier names."""
+Write 2-3 sentences. Be specific with numbers and supplier names. If the recommended supplier differs from the preferred or incumbent, explain the trade-off clearly."""
 
     result = call_claude_json(
         NARRATION_SYSTEM,
@@ -173,7 +203,10 @@ Write 2-3 sentences. Be specific with numbers and supplier names."""
     if raw:
         return raw.strip()
 
-    return _template_overall(request_summary, shortlist, escalations, validation_issues)
+    return _template_overall(
+        request_summary, shortlist, escalations, validation_issues,
+        preferred_supplier_name, incumbent_supplier_name,
+    )
 
 
 # --- LLM implementations ---
@@ -399,8 +432,8 @@ def _template_note(
     if is_incumbent:
         parts.append("Incumbent supplier")
     if is_preferred:
-        parts.append("preferred supplier")
-    parts.append(f"Total {currency} {total_price:,.2f}")
+        parts.append("on preferred supplier list")
+    parts.append(f"total {currency} {total_price:,.2f}")
     parts.append(f"quality {quality_score}/100")
     parts.append(f"risk {risk_score}/100")
     if lead_time_status == "infeasible":
@@ -409,11 +442,12 @@ def _template_note(
         parts.append("requires expedited delivery")
     if capacity_exceeded:
         parts.append("capacity risk: quantity exceeds monthly capacity")
-    return ". ".join(parts) + "."
+    return ". ".join(parts).capitalize() + "."
 
 
-def _template_overall(request_summary, shortlist, escalations, validation_issues) -> str:
-    """Template-based overall narrative — solution-focused."""
+def _template_overall(request_summary, shortlist, escalations, validation_issues,
+                      preferred_supplier_name=None, incumbent_supplier_name=None) -> str:
+    """Template-based overall narrative — solution-focused with trade-off explanations."""
     parts = []
     if shortlist:
         winner = shortlist[0]
@@ -424,13 +458,33 @@ def _template_overall(request_summary, shortlist, escalations, validation_issues
         )
         if len(shortlist) > 1:
             parts.append(f"{len(shortlist)} suppliers compared.")
+
+        # Explain preferred/incumbent trade-offs
+        if preferred_supplier_name and preferred_supplier_name != winner.supplier_name:
+            pref = next((s for s in shortlist if s.supplier_name == preferred_supplier_name), None)
+            if pref:
+                saving = pref.total_price - winner.total_price
+                parts.append(
+                    f"Stated preferred {preferred_supplier_name} ranked #{pref.rank} "
+                    f"at {pref.currency} {pref.total_price:,.2f} "
+                    f"(+{pref.currency} {saving:,.2f} vs recommendation)."
+                )
+            else:
+                parts.append(
+                    f"Stated preferred {preferred_supplier_name} was excluded during matching."
+                )
+
+        if (incumbent_supplier_name
+            and incumbent_supplier_name != winner.supplier_name
+            and incumbent_supplier_name != preferred_supplier_name):
+            inc = next((s for s in shortlist if s.supplier_name == incumbent_supplier_name), None)
+            if inc:
+                parts.append(f"Incumbent {incumbent_supplier_name} ranked #{inc.rank}.")
     else:
         parts.append("No suppliers matched current criteria. Supplier discovery has been triggered.")
 
     # Only mention real issues, not adaptations
-    real_issues = [i for i in validation_issues if not i.type.startswith("auto_adapt_")]
     adaptations = [i for i in validation_issues if i.type.startswith("auto_adapt_")]
-
     if adaptations:
         adapted = [a.type.replace("auto_adapt_", "") for a in adaptations]
         parts.append(f"Auto-adapted for missing: {', '.join(adapted)}.")

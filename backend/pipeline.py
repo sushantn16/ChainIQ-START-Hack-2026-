@@ -179,6 +179,8 @@ def process_request(req: ProcessRequest) -> PipelineResult:
         shortlist=shortlist,
         escalations=escalations,
         validation_issues=validation.issues_detected,
+        preferred_supplier_name=interp.preferred_supplier_stated,
+        incumbent_supplier_name=interp.incumbent_supplier,
     )
 
     # --- What-If Analysis ---
@@ -587,6 +589,8 @@ def process_request_streaming(req: ProcessRequest):
         shortlist=shortlist,
         escalations=escalations,
         validation_issues=validation.issues_detected,
+        preferred_supplier_name=interp.preferred_supplier_stated,
+        incumbent_supplier_name=interp.incumbent_supplier,
     )
     recommendation_data = {
         "status": result.recommendation.status,
@@ -929,13 +933,14 @@ def _build_recommendation(
 
     Self-healing: only compliance blocks produce cannot_proceed.
     Everything else resolves to recommend or recommend_with_escalation.
+    When the recommended supplier differs from the stated preferred or incumbent,
+    the reason explains why.
     """
     blocking = [e for e in escalations if e.blocking]
     advisories = [e for e in escalations if not e.blocking]
     is_unit_pricing = interp.quantity is None
 
     if blocking:
-        # True compliance blocks (restricted supplier, data residency)
         top_supplier = shortlist[0].supplier_name if shortlist else None
         return Recommendation(
             status="cannot_proceed",
@@ -948,22 +953,57 @@ def _build_recommendation(
             minimum_budget_required=shortlist[0].total_price if shortlist else None,
             minimum_budget_currency=interp.currency,
         )
-    elif shortlist and advisories:
-        winner = shortlist[0]
-        unit_note = " (per-unit pricing — provide quantity for total cost)" if is_unit_pricing else ""
-        return Recommendation(
-            status="recommend_with_escalation",
-            reason=f"Recommended: {winner.supplier_name} at {winner.currency} {winner.total_price:,.2f}{unit_note}. "
-                   f"{len(advisories)} advisory note(s) for review.",
-            preferred_supplier_if_resolved=winner.supplier_name,
-        )
     elif shortlist:
         winner = shortlist[0]
         unit_note = " (per-unit pricing — provide quantity for total cost)" if is_unit_pricing else ""
+
+        # Build reason that explains trade-offs
+        reason_parts = [
+            f"Recommended: {winner.supplier_name} at "
+            f"{winner.currency} {winner.total_price:,.2f}{unit_note}."
+        ]
+
+        # Explain if winner differs from stated preferred supplier
+        pref_name = interp.preferred_supplier_stated
+        if pref_name and pref_name != winner.supplier_name:
+            pref_entry = next((s for s in shortlist if s.supplier_name == pref_name), None)
+            if pref_entry:
+                price_diff = pref_entry.total_price - winner.total_price
+                reason_parts.append(
+                    f"Preferred supplier {pref_name} ranked #{pref_entry.rank} "
+                    f"({pref_entry.currency} {pref_entry.total_price:,.2f}, "
+                    f"+{pref_entry.currency} {price_diff:,.2f}) — "
+                    f"outranked on price and composite score "
+                    f"({winner.composite_score:.2f} vs {pref_entry.composite_score:.2f})."
+                )
+            else:
+                reason_parts.append(
+                    f"Stated preferred supplier {pref_name} was not in the shortlist "
+                    f"(excluded during matching or not eligible for this category/region)."
+                )
+
+        # Explain if winner differs from incumbent
+        inc_name = interp.incumbent_supplier
+        if inc_name and inc_name != winner.supplier_name and inc_name != pref_name:
+            inc_entry = next((s for s in shortlist if s.supplier_name == inc_name), None)
+            if inc_entry:
+                reason_parts.append(
+                    f"Incumbent {inc_name} ranked #{inc_entry.rank} "
+                    f"({inc_entry.currency} {inc_entry.total_price:,.2f})."
+                )
+            else:
+                reason_parts.append(
+                    f"Incumbent {inc_name} was excluded "
+                    f"(not eligible for this category/region)."
+                )
+
+        if advisories:
+            reason_parts.append(f"{len(advisories)} advisory note(s) for review.")
+
+        status = "recommend_with_escalation" if advisories else "recommend"
         return Recommendation(
-            status="recommend",
-            reason=f"Recommended: {winner.supplier_name} at {winner.currency} {winner.total_price:,.2f}{unit_note}. "
-                   f"Composite score: {winner.composite_score:.4f}.",
+            status=status,
+            reason=" ".join(reason_parts),
             preferred_supplier_if_resolved=winner.supplier_name,
         )
     else:

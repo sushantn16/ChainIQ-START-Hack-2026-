@@ -338,29 +338,40 @@ function FitScoreDetail({ supplier: s, allSuppliers }) {
 
   return (
     <div className="p-3 bg-slate-50 rounded border border-slate-100">
-      <div className="flex items-center gap-2 mb-2 flex-wrap">
-        <p className="text-xs font-medium text-slate-600">Fit Score</p>
-        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700">
-          {(s.composite_score * 100).toFixed(1)}%
-        </span>
-        {(s.preferred || s.user_preferred) && (
-          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-600">+10% preferred</span>
-        )}
-        {s.historical_performance?.experience_score > 0 && (
-          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-50 text-indigo-600">+{(s.historical_performance.experience_score * 5).toFixed(1)}% exp</span>
-        )}
-      </div>
-      <div className="space-y-1.5">
-        {factors.map(f => (
-          <div key={f.label} className="flex items-center gap-2">
-            <span className="text-[10px] text-slate-500 w-16">{f.label} <span className="text-slate-400">({f.weight}%)</span></span>
-            <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
-              <div className={`h-full ${f.color} rounded-full`} style={{ width: `${f.score * 100}%` }} />
+      {(() => {
+        const prefBonus = (s.preferred || s.user_preferred) ? 10 : 0;
+        const expBonus = s.historical_performance?.experience_score > 0 ? s.historical_performance.experience_score * 5 : 0;
+        const baseScore = (s.composite_score * 100) - prefBonus - expBonus;
+        const hasBonuses = prefBonus > 0 || expBonus > 0;
+        return (
+          <>
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <p className="text-xs font-medium text-slate-600">Fit Score</p>
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700">
+                {(s.composite_score * 100).toFixed(1)}%
+              </span>
+              {hasBonuses && (
+                <span className="text-[10px] text-slate-400">
+                  = {baseScore.toFixed(1)}% base
+                  {prefBonus > 0 && <span className="text-emerald-600"> + {prefBonus}% preferred</span>}
+                  {expBonus > 0 && <span className="text-indigo-600"> + {expBonus.toFixed(1)}% track record</span>}
+                </span>
+              )}
             </div>
-            <span className="text-[10px] text-slate-500 w-10 text-right">{(f.score * 100).toFixed(0)}%</span>
-          </div>
-        ))}
-      </div>
+            <div className="space-y-1.5">
+              {factors.map(f => (
+                <div key={f.label} className="flex items-center gap-2">
+                  <span className="text-[10px] text-slate-500 w-16">{f.label} <span className="text-slate-400">({f.weight}%)</span></span>
+                  <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
+                    <div className={`h-full ${f.color} rounded-full`} style={{ width: `${f.score * 100}%` }} />
+                  </div>
+                  <span className="text-[10px] text-slate-500 w-10 text-right">{(f.score * 100).toFixed(0)}%</span>
+                </div>
+              ))}
+            </div>
+          </>
+        );
+      })()}
     </div>
   );
 }

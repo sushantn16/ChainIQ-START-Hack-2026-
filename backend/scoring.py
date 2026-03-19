@@ -123,7 +123,6 @@ def score_and_rank_suppliers(
     delivery_countries: list[str],
     quantity: int | None,
     days_available: int | None,
-    esg_required: bool,
     preferred_supplier_name: str | None,
     incumbent_supplier_name: str | None,
     data_residency_required: bool,

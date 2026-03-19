@@ -9,7 +9,6 @@ Self-healing philosophy:
 
 from backend.data_loader import DataStore
 from backend.models import Validation, ValidationIssue
-from backend.supplier_matcher import get_region_for_country
 
 
 def validate_request(
@@ -92,51 +91,10 @@ def validate_request(
                 "Verify correct category classification.",
             )
 
-    # 4. Budget feasibility — advisory, not blocking
-    if budget is not None and quantity is not None and category_l1 and category_l2 and quantity > 0:
-        cheapest = _find_cheapest_unit_price(
-            category_l1, category_l2, delivery_countries, quantity, store,
-        )
-        if cheapest is not None:
-            min_cost = cheapest * quantity
-            if min_cost > budget:
-                shortfall = min_cost - budget
-                max_affordable_qty = int(budget / cheapest) if cheapest > 0 else 0
-                add_issue(
-                    "medium",
-                    "budget_advisory",
-                    f"Budget of {currency} {budget:,.2f} is {currency} {shortfall:,.2f} below the minimum "
-                    f"cost of {currency} {min_cost:,.2f} for {quantity} units.",
-                    f"Options: increase budget to {currency} {min_cost:,.2f}, "
-                    f"or reduce quantity to {max_affordable_qty} units. "
-                    f"Proceeding with full supplier comparison.",
-                )
+    # 4. Budget and lead-time feasibility are checked AFTER supplier matching
+    #    via validate_feasibility() — so they only consider eligible suppliers.
 
-    # 5. Lead time feasibility — advisory
-    if days_until_required is not None and category_l1 and category_l2:
-        min_expedited = _find_min_expedited_lead_time(
-            category_l1, category_l2, delivery_countries, store,
-        )
-        if min_expedited is not None:
-            if days_until_required < min_expedited:
-                add_issue(
-                    "medium",
-                    "lead_time_advisory",
-                    f"Requested delivery in {days_until_required} days. "
-                    f"Fastest option is {min_expedited} days.",
-                    "Consider extending the deadline or accepting expedited pricing. "
-                    "Suppliers ranked by closest lead time.",
-                )
-            elif days_until_required < min_expedited + 5:
-                add_issue(
-                    "low",
-                    "lead_time_tight",
-                    f"Tight timeline: {days_until_required} days available, "
-                    f"fastest expedited is {min_expedited} days.",
-                    "Expedited delivery may be required. Budget for premium pricing.",
-                )
-
-    # 6. Quantity/text contradiction detection
+    # 5. Quantity/text contradiction detection
     if request_text and quantity is not None:
         import re
         matches = re.findall(r'(\d[\d,]*)\s*(?:laptop|device|unit|monitor|chair|desk|station|phone|tablet|day|hour|seat|set|project|campaign|workstation|license)', request_text.lower())
@@ -155,45 +113,79 @@ def validate_request(
     return Validation(completeness=completeness, issues_detected=issues)
 
 
-def _find_cheapest_unit_price(
-    category_l1: str,
-    category_l2: str,
-    delivery_countries: list[str],
-    quantity: int,
-    store: DataStore,
-) -> float | None:
-    """Find the cheapest unit price across all suppliers for this category+quantity."""
-    region = get_region_for_country(delivery_countries[0]) if delivery_countries else "EU"
-    cheapest = None
+def validate_feasibility(
+    validation: Validation,
+    shortlist: list,
+    budget: float | None,
+    currency: str | None,
+    quantity: int | None,
+    days_until_required: int | None,
+) -> Validation:
+    """Post-matching feasibility checks using only eligible suppliers.
 
-    for p in store.pricing:
-        if p["category_l1"] != category_l1 or p["category_l2"] != category_l2:
-            continue
-        if p["region"] != region:
-            continue
-        if p["min_quantity"] <= quantity <= p["max_quantity"]:
-            if cheapest is None or p["unit_price"] < cheapest:
-                cheapest = p["unit_price"]
+    Appends budget and lead-time advisories to the existing validation.
+    Must be called after supplier matching and scoring.
+    """
+    if not shortlist:
+        return validation
 
-    return cheapest
+    issues = list(validation.issues_detected)
+    issue_counter = len(issues)
 
+    def add_issue(severity: str, issue_type: str, desc: str, action: str):
+        nonlocal issue_counter
+        issue_counter += 1
+        issues.append(ValidationIssue(
+            issue_id=f"V-{issue_counter:03d}",
+            severity=severity,
+            type=issue_type,
+            description=desc,
+            action_required=action,
+        ))
 
-def _find_min_expedited_lead_time(
-    category_l1: str,
-    category_l2: str,
-    delivery_countries: list[str],
-    store: DataStore,
-) -> int | None:
-    """Find the minimum expedited lead time across all suppliers."""
-    region = get_region_for_country(delivery_countries[0]) if delivery_countries else "EU"
-    min_lead = None
+    # Budget feasibility — based on eligible suppliers only
+    if budget is not None and quantity is not None and quantity > 0:
+        cheapest_unit = min(s.unit_price for s in shortlist)
+        cheapest_supplier = min(shortlist, key=lambda s: s.unit_price)
+        min_cost = cheapest_unit * quantity
+        if min_cost > budget:
+            shortfall = min_cost - budget
+            max_affordable_qty = int(budget / cheapest_unit) if cheapest_unit > 0 else 0
+            add_issue(
+                "medium",
+                "budget_advisory",
+                f"Budget of {currency} {budget:,.2f} is {currency} {shortfall:,.2f} below the cheapest "
+                f"eligible supplier ({cheapest_supplier.supplier_name} at "
+                f"{currency} {min_cost:,.2f} for {quantity} units).",
+                f"Options: increase budget to {currency} {min_cost:,.2f}, "
+                f"or reduce quantity to {max_affordable_qty} units. "
+                f"Proceeding with full supplier comparison.",
+            )
 
-    for p in store.pricing:
-        if p["category_l1"] != category_l1 or p["category_l2"] != category_l2:
-            continue
-        if p["region"] != region:
-            continue
-        if min_lead is None or p["expedited_lead_time_days"] < min_lead:
-            min_lead = p["expedited_lead_time_days"]
+    # Lead time feasibility — based on eligible suppliers only
+    if days_until_required is not None:
+        min_expedited = min(s.expedited_lead_time_days for s in shortlist)
+        fastest_supplier = min(shortlist, key=lambda s: s.expedited_lead_time_days)
+        if days_until_required < min_expedited:
+            add_issue(
+                "medium",
+                "lead_time_advisory",
+                f"Requested delivery in {days_until_required} days. "
+                f"Fastest eligible supplier ({fastest_supplier.supplier_name}) "
+                f"needs {min_expedited} days even with expedited delivery.",
+                "Consider extending the deadline or accepting expedited pricing. "
+                "Suppliers ranked by closest lead time.",
+            )
+        elif days_until_required < min_expedited + 5:
+            add_issue(
+                "low",
+                "lead_time_tight",
+                f"Tight timeline: {days_until_required} days available, "
+                f"fastest expedited is {min_expedited} days ({fastest_supplier.supplier_name}).",
+                "Expedited delivery may be required. Budget for premium pricing.",
+            )
 
-    return min_lead
+    return Validation(
+        completeness=validation.completeness,
+        issues_detected=issues,
+    )

@@ -284,7 +284,6 @@ function ShortlistPanel({ shortlist }) {
           {/* Fit Score Breakdown + Risk Composite + Historical Performance */}
           <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2">
             <FitScoreDetail supplier={s} allSuppliers={shortlist} />
-            {s.risk_composite && <RiskCompositeDetail rc={s.risk_composite} />}
             {s.historical_performance && s.historical_performance.category_bids > 0 && (
               <HistoricalPerformanceDetail hp={s.historical_performance} />
             )}
@@ -382,59 +381,48 @@ const RISK_TIER_STYLES = {
   high:     { bg: 'bg-red-100', text: 'text-red-700' },
 };
 
-function RiskBadge({ riskScore, riskComposite }) {
+function RiskBadge({ riskComposite }) {
   const tier = riskComposite?.tier || 'medium';
   const ts = RISK_TIER_STYLES[tier] || RISK_TIER_STYLES.medium;
-  return (
-    <div>
-      <p className="text-xs text-slate-500">Risk</p>
-      <div className="flex items-center gap-1.5">
-        <p className={`text-sm font-semibold ${riskScore > 65 ? 'text-red-700' : riskScore > 45 ? 'text-amber-700' : 'text-emerald-700'}`}>
-          {riskScore}/100
-        </p>
-        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${ts.bg} ${ts.text}`}>
-          {tier}
-        </span>
-      </div>
-    </div>
-  );
-}
+  const rc = riskComposite;
 
-function RiskCompositeDetail({ rc }) {
-  const bars = [
-    { label: 'Country', value: rc.country_risk, max: 40, color: 'bg-blue-500' },
-    { label: 'Delivery', value: rc.delivery_risk, max: 40, color: 'bg-purple-500' },
-    { label: 'Baseline', value: rc.baseline_risk, max: 30, color: 'bg-slate-500' },
-  ];
+  // Build hover tooltip lines
+  const tooltipLines = [];
+  if (rc) {
+    const inputs = rc.inputs || {};
+    tooltipLines.push(`Country: ${inputs.country_hq || '?'} (${rc.country_risk}/40)`);
+    if (inputs.historical_bids > 0) {
+      tooltipLines.push(`Win rate: ${((inputs.win_rate || 0) * 100).toFixed(0)}% of ${inputs.historical_bids} bids`);
+      tooltipLines.push(`Escalation rate: ${((inputs.escalation_rate || 0) * 100).toFixed(0)}%`);
+    } else {
+      tooltipLines.push('No award history');
+    }
+    tooltipLines.push(`Delivery risk: ${rc.delivery_risk}/40`);
+    tooltipLines.push(`Baseline: ${rc.baseline_risk}/30`);
+    tooltipLines.push(`Total: ${rc.total}/100`);
+    if (rc.flags && rc.flags.length > 0) {
+      rc.flags.forEach(f => tooltipLines.push(`⚠ ${f}`));
+    }
+  }
+
   return (
-    <div className="mt-2 p-3 bg-slate-50 rounded border border-slate-100">
-      <div className="flex items-center gap-2 mb-2">
-        <p className="text-xs font-medium text-slate-600">Risk Breakdown</p>
-        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${(RISK_TIER_STYLES[rc.tier] || RISK_TIER_STYLES.medium).bg} ${(RISK_TIER_STYLES[rc.tier] || RISK_TIER_STYLES.medium).text}`}>
-          {rc.tier} ({rc.total}/100)
-        </span>
-      </div>
-      <div className="space-y-1.5">
-        {bars.map(b => (
-          <div key={b.label} className="flex items-center gap-2">
-            <span className="text-[10px] text-slate-500 w-14">{b.label}</span>
-            <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
-              <div className={`h-full ${b.color} rounded-full`} style={{ width: `${(b.value / b.max) * 100}%` }} />
-            </div>
-            <span className="text-[10px] text-slate-500 w-8 text-right">{b.value}/{b.max}</span>
-          </div>
-        ))}
-      </div>
-      {rc.flags && rc.flags.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1">
-          {rc.flags.map((f, i) => (
-            <span key={i} className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded text-[10px]">{f}</span>
+    <div className="relative group">
+      <p className="text-xs text-slate-500">Risk</p>
+      <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${ts.bg} ${ts.text} cursor-default`}>
+        {tier}
+      </span>
+      {tooltipLines.length > 0 && (
+        <div className="absolute z-20 bottom-full left-0 mb-1 hidden group-hover:block w-64 p-2.5 bg-slate-800 text-white rounded-lg shadow-lg text-[11px] leading-relaxed">
+          {tooltipLines.map((line, i) => (
+            <p key={i} className={line.startsWith('⚠') ? 'text-amber-300 mt-1' : ''}>{line}</p>
           ))}
+          <div className="absolute top-full left-4 w-0 h-0 border-l-[5px] border-r-[5px] border-t-[5px] border-l-transparent border-r-transparent border-t-slate-800" />
         </div>
       )}
     </div>
   );
 }
+
 
 function HistoricalPerformanceDetail({ hp }) {
   const winRate = hp.category_bids > 0 ? ((hp.category_wins / hp.category_bids) * 100).toFixed(0) : 0;

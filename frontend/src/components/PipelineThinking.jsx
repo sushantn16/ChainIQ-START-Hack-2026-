@@ -1,143 +1,43 @@
 import { useState, useEffect, useRef } from 'react'
 
-const STEP_CONFIG = {
-  intake:         { label: 'Request Intake',       icon: '1', color: 'blue' },
-  extraction:     { label: 'Extraction & Translation', icon: '2', color: 'violet' },
-  validation:     { label: 'Validation',           icon: '3', color: 'amber' },
-  matching:       { label: 'Supplier Matching',    icon: '4', color: 'cyan' },
-  scoring:        { label: 'Pricing & Scoring',    icon: '5', color: 'emerald' },
-  narration:      { label: 'LLM Narration',        icon: '6', color: 'purple' },
-  discovery:      { label: 'Supplier Discovery',   icon: '7', color: 'teal' },
-  policy:         { label: 'Policy Evaluation',    icon: '8', color: 'indigo' },
-  escalation:     { label: 'Escalation Check',     icon: '9', color: 'red' },
-  recommendation: { label: 'Recommendation',       icon: '10', color: 'blue' },
-  narrative:      { label: 'Audit Narrative',       icon: '10', color: 'violet' },
-  what_if:        { label: 'What-If Analysis',     icon: '11', color: 'orange' },
-  audit:          { label: 'Audit Trail',           icon: '12', color: 'slate' },
-  done:           { label: 'Complete',              icon: '✓', color: 'emerald' },
-};
+// Logical phases that group related backend steps
+const PHASES = [
+  {
+    label: 'Understand the Request',
+    steps: [
+      { key: 'intake',     label: 'Receive & Parse',           num: '1' },
+      { key: 'extraction', label: 'Extract & Translate Fields', num: '2' },
+      { key: 'validation', label: 'Validate & Auto-Heal',      num: '3' },
+    ],
+  },
+  {
+    label: 'Source & Evaluate Suppliers',
+    steps: [
+      { key: 'matching',  label: 'Match Eligible Suppliers',        num: '4' },
+      { key: 'scoring',   label: 'Score & Rank on Fit',             num: '5' },
+      { key: 'narration', label: 'Generate Supplier Assessments',   num: '6' },
+      { key: 'discovery', label: 'Discover Alternative Suppliers',  num: '7' },
+    ],
+  },
+  {
+    label: 'Compliance & Decision',
+    steps: [
+      { key: 'policy',         label: 'Evaluate Policy Rules',       num: '8' },
+      { key: 'escalation',     label: 'Check Escalation Triggers',   num: '9' },
+      { key: 'recommendation', label: 'Build Recommendation',        num: '10' },
+      { key: 'narrative',      label: 'Write Decision Narrative',    num: '11' },
+    ],
+  },
+  {
+    label: 'Optimize & Finalize',
+    steps: [
+      { key: 'what_if', label: 'Explore What-If Scenarios', num: '12' },
+      { key: 'audit',   label: 'Assemble Audit Trail',      num: '13' },
+    ],
+  },
+];
 
-const STEP_ORDER = ['intake', 'extraction', 'validation', 'matching', 'scoring', 'narration', 'discovery', 'policy', 'escalation', 'recommendation', 'narrative', 'what_if', 'audit', 'done'];
-
-export default function PipelineThinking({ steps, currentStep, done }) {
-  const [collapsed, setCollapsed] = useState(false);
-
-  // Auto-collapse when pipeline completes
-  const prevDoneRef = useRef(done);
-  useEffect(() => {
-    if (done && !prevDoneRef.current) {
-      setCollapsed(true);
-    }
-    prevDoneRef.current = done;
-  }, [done]);
-
-  return (
-    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-      <button
-        onClick={() => setCollapsed(!collapsed)}
-        className="w-full px-6 py-4 border-b border-slate-100 flex items-center justify-between hover:bg-slate-50 transition-colors"
-      >
-        <div className="flex items-center gap-3">
-          <h3 className="text-base font-semibold text-slate-900">Pipeline Thinking</h3>
-          {!done && (
-            <span className="flex items-center gap-1.5 text-xs text-brand-500 font-medium">
-              <span className="w-2 h-2 rounded-full bg-brand-500 animate-pulse"></span>
-              Processing...
-            </span>
-          )}
-          {done && (
-            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-xs font-medium">
-              Complete
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-slate-400">
-            {steps.length} step{steps.length !== 1 ? 's' : ''} completed
-          </span>
-          <span className={`text-slate-400 transition-transform ${collapsed ? '' : 'rotate-180'}`}>▾</span>
-        </div>
-      </button>
-
-      {!collapsed && <div className="px-6 py-4">
-        <div className="relative">
-          {/* Vertical line */}
-          <div className="absolute left-[15px] top-0 bottom-0 w-px bg-slate-200"></div>
-
-          <div className="space-y-0">
-            {STEP_ORDER.map((stepKey) => {
-              const config = STEP_CONFIG[stepKey];
-              const stepEntries = steps.filter(s => s.step === stepKey);
-              const isActive = currentStep === stepKey;
-              const isCompleted = steps.some(s => s.step === stepKey);
-              const isPending = !isCompleted && !isActive;
-
-              // Skip 'done' in the list
-              if (stepKey === 'done') return null;
-
-              // Get the last entry with data for this step
-              const dataEntry = [...stepEntries].reverse().find(s => s.data);
-              const data = dataEntry?.data;
-
-              return (
-                <div key={stepKey} className="relative flex gap-3 pb-4">
-                  {/* Step indicator */}
-                  <div className={`relative z-10 flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
-                    isActive
-                      ? `bg-brand-500 text-white ring-4 ring-brand-100 animate-pulse`
-                      : isCompleted
-                        ? `bg-emerald-500 text-white`
-                        : `bg-slate-100 text-slate-400`
-                  }`}>
-                    {isCompleted && !isActive ? '✓' : config.icon}
-                  </div>
-
-                  {/* Step content */}
-                  <div className={`flex-1 min-w-0 pt-1 transition-opacity duration-300 ${isPending ? 'opacity-40' : 'opacity-100'}`}>
-                    <p className={`text-sm font-medium ${
-                      isActive ? 'text-brand-700' : isCompleted ? 'text-slate-900' : 'text-slate-400'
-                    }`}>
-                      {config.label}
-                    </p>
-
-                    {stepEntries.map((entry, i) => (
-                      <p
-                        key={i}
-                        className={`text-xs mt-0.5 leading-relaxed ${
-                          isActive && i === stepEntries.length - 1
-                            ? 'text-brand-500'
-                            : 'text-slate-500'
-                        }`}
-                      >
-                        {entry.detail}
-                      </p>
-                    ))}
-
-                    {isActive && stepEntries.length > 0 && (
-                      <div className="mt-1 flex items-center gap-1">
-                        <span className="w-1 h-1 bg-brand-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                        <span className="w-1 h-1 bg-brand-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                        <span className="w-1 h-1 bg-brand-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
-                      </div>
-                    )}
-
-                    {/* Rich data panel */}
-                    {isCompleted && data && (
-                      <div className="mt-2">
-                        <StepDataPanel stepKey={stepKey} data={data} />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>}
-    </div>
-  );
-}
-
+const ALL_STEP_KEYS = PHASES.flatMap(p => p.steps.map(s => s.key));
 
 function StepDataPanel({ stepKey, data }) {
   switch (stepKey) {
@@ -157,6 +57,148 @@ function StepDataPanel({ stepKey, data }) {
   }
 }
 
+export default function PipelineThinking({ steps, currentStep, done }) {
+  const [collapsed, setCollapsed] = useState(false);
+
+  const prevDoneRef = useRef(done);
+  useEffect(() => {
+    if (done && !prevDoneRef.current) {
+      setCollapsed(true);
+    }
+    prevDoneRef.current = done;
+  }, [done]);
+
+  const completedSteps = new Set(steps.map(s => s.step));
+  const completedCount = ALL_STEP_KEYS.filter(k => completedSteps.has(k)).length;
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <button
+        onClick={() => setCollapsed(!collapsed)}
+        className="w-full px-6 py-4 border-b border-slate-100 flex items-center justify-between hover:bg-slate-50 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <h3 className="text-base font-semibold text-slate-900">Agent Pipeline</h3>
+          {!done && (
+            <span className="flex items-center gap-1.5 text-xs text-brand-500 font-medium">
+              <span className="w-2 h-2 rounded-full bg-brand-500 animate-pulse"></span>
+              Processing...
+            </span>
+          )}
+          {done && (
+            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-xs font-medium">
+              Complete
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-slate-400">
+            {completedCount}/13 steps
+          </span>
+          <span className={`text-slate-400 transition-transform ${collapsed ? '' : 'rotate-180'}`}>&#9662;</span>
+        </div>
+      </button>
+
+      {!collapsed && (
+        <div className="py-2">
+          {PHASES.map((phase, phaseIdx) => {
+            const phaseStepKeys = phase.steps.map(s => s.key);
+            const phaseIsActive = phaseStepKeys.includes(currentStep);
+            const phaseCompleted = phaseStepKeys.every(k => completedSteps.has(k));
+            const phaseStarted = phaseStepKeys.some(k => completedSteps.has(k)) || phaseIsActive;
+
+            return (
+              <div key={phaseIdx}>
+                {/* Phase header */}
+                <div className={`px-6 py-2 flex items-center gap-2 ${phaseIdx > 0 ? 'mt-1' : ''}`}>
+                  <div className={`h-px flex-1 ${phaseStarted ? 'bg-slate-200' : 'bg-slate-100'}`}></div>
+                  <span className={`text-[11px] font-semibold uppercase tracking-wider ${
+                    phaseIsActive ? 'text-brand-600' : phaseCompleted ? 'text-slate-500' : 'text-slate-300'
+                  }`}>
+                    {phase.label}
+                  </span>
+                  <div className={`h-px flex-1 ${phaseStarted ? 'bg-slate-200' : 'bg-slate-100'}`}></div>
+                </div>
+
+                {/* Steps within this phase */}
+                <div className="px-6">
+                  <div className="relative">
+                    <div className="absolute left-[15px] top-0 bottom-0 w-px bg-slate-200"></div>
+
+                    {phase.steps.map((step) => {
+                      const stepEntries = steps.filter(s => s.step === step.key);
+                      const isActive = currentStep === step.key;
+                      const isCompleted = completedSteps.has(step.key);
+                      const isPending = !isCompleted && !isActive;
+
+                      const dataEntry = [...stepEntries].reverse().find(s => s.data);
+                      const data = dataEntry?.data;
+
+                      return (
+                        <div key={step.key} className="relative flex gap-3 pb-3">
+                          {/* Step indicator */}
+                          <div className={`relative z-10 flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
+                            isActive
+                              ? 'bg-brand-500 text-white ring-4 ring-brand-100 animate-pulse'
+                              : isCompleted
+                                ? 'bg-emerald-500 text-white'
+                                : 'bg-slate-100 text-slate-400'
+                          }`}>
+                            {isCompleted && !isActive ? '✓' : step.num}
+                          </div>
+
+                          {/* Step content */}
+                          <div className={`flex-1 min-w-0 pt-1 transition-opacity duration-300 ${isPending ? 'opacity-40' : 'opacity-100'}`}>
+                            <p className={`text-sm font-medium ${
+                              isActive ? 'text-brand-700' : isCompleted ? 'text-slate-900' : 'text-slate-400'
+                            }`}>
+                              {step.label}
+                            </p>
+
+                            {stepEntries.map((entry, i) => (
+                              <p
+                                key={i}
+                                className={`text-xs mt-0.5 leading-relaxed ${
+                                  isActive && i === stepEntries.length - 1
+                                    ? 'text-brand-500'
+                                    : 'text-slate-500'
+                                }`}
+                              >
+                                {entry.detail}
+                              </p>
+                            ))}
+
+                            {isActive && stepEntries.length > 0 && (
+                              <div className="mt-1 flex items-center gap-1">
+                                <span className="w-1 h-1 bg-brand-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                                <span className="w-1 h-1 bg-brand-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                                <span className="w-1 h-1 bg-brand-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                              </div>
+                            )}
+
+                            {/* Rich data panel */}
+                            {isCompleted && data && (
+                              <div className="mt-2">
+                                <StepDataPanel stepKey={step.key} data={data} />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// --- Shared UI primitives ---
 
 function DataCard({ children, className = '' }) {
   return (
@@ -194,7 +236,7 @@ function Badge({ text, color = 'slate' }) {
 }
 
 
-// --- Step-specific renderers ---
+// --- Step-specific data renderers ---
 
 function IntakeData({ data }) {
   if (data.type === 'free_text') {
@@ -225,12 +267,12 @@ function ExtractionData({ data }) {
       <div className="grid grid-cols-2 gap-x-4">
         <KV label="Category" value={`${data.category_l1}/${data.category_l2}`} />
         <KV label="Quantity" value={data.quantity} />
-        <KV label="Budget" value={data.budget_amount ? `${data.currency} ${Number(data.budget_amount).toLocaleString()}` : '—'} />
+        <KV label="Budget" value={data.budget_amount ? `${data.currency} ${Number(data.budget_amount).toLocaleString()}` : null} />
         <KV label="Delivery" value={data.delivery_countries?.join(', ')} />
         <KV label="Required By" value={data.required_by_date} />
         <KV label="Days Available" value={data.days_until_required} />
-        <KV label="Preferred" value={data.preferred_supplier || '—'} />
-        <KV label="Confidence" value={data.confidence ? `${(data.confidence * 100).toFixed(0)}%` : '—'} />
+        <KV label="Preferred" value={data.preferred_supplier} />
+        <KV label="Confidence" value={data.confidence ? `${(data.confidence * 100).toFixed(0)}%` : null} />
       </div>
       {data.translated_text && (
         <div className="mt-2 pt-2 border-t border-slate-200">
@@ -348,7 +390,7 @@ function ScoringData({ data }) {
   if (!data.shortlist?.length) {
     return (
       <DataCard>
-        <span className="text-slate-500">No suppliers scored — supplier discovery triggered to find alternatives</span>
+        <span className="text-slate-500">No suppliers scored — discovery triggered to find alternatives</span>
       </DataCard>
     );
   }
@@ -422,7 +464,7 @@ function DiscoveryData({ data }) {
       <DataCard>
         <div className="flex items-center gap-1.5">
           <span className="text-slate-400">&#8212;</span>
-          <span className="text-slate-500">Sufficient supplier coverage</span>
+          <span className="text-slate-500">Sufficient supplier coverage — no discovery needed</span>
         </div>
       </DataCard>
     );

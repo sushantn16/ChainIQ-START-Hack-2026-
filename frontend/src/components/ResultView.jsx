@@ -57,6 +57,9 @@ export default function ResultView({ result, onApplyScenario }) {
                 <span>Deviation approval: <strong>{r.policy_evaluation.approval_threshold.deviation_approval}</strong></span>
               )}
             </div>
+            <div className="mt-3">
+              <SendApprovalButton approvers={r.policy_evaluation.approval_threshold.approvers} requestId={r.request_id} />
+            </div>
           </div>
         </div>
       )}
@@ -752,6 +755,25 @@ function DiscoveryPanel({ discovery }) {
         <p className="text-xs text-slate-500 italic">{discovery.recommendation}</p>
       )}
     </div>
+  );
+}
+
+function SendApprovalButton({ approvers, requestId }) {
+  const [sent, setSent] = useState(false);
+  if (sent) {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-100 text-emerald-700">
+        ✓ Approval request sent to {approvers?.join(', ')}
+      </span>
+    );
+  }
+  return (
+    <button
+      onClick={() => setSent(true)}
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-purple-600 text-white hover:bg-purple-700 transition-colors"
+    >
+      Send for Approval
+    </button>
   );
 }
 

@@ -14,10 +14,14 @@ from backend.data_loader import DataStore
 
 # --- LLM Extraction ---
 
-EXTRACTION_SYSTEM = """You are a procurement request parser. Extract structured fields from purchase request text.
+def _get_extraction_system():
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+    return f"""You are a procurement request parser. Extract structured fields from purchase request text.
+Today's date is {today}. Use this to resolve relative deadlines like "in 2 weeks", "next month", "within 30 days" into concrete YYYY-MM-DD dates.
+
 Return ONLY valid JSON with these fields (use null for missing/uncertain values):
 
-{
+{{
   "category_l1": "IT | Facilities | Professional Services | Marketing",
   "category_l2": "specific subcategory from the taxonomy",
   "quantity": integer or null,
@@ -25,7 +29,7 @@ Return ONLY valid JSON with these fields (use null for missing/uncertain values)
   "budget_amount": number or null,
   "currency": "EUR | CHF | USD",
   "delivery_countries": ["country codes"],
-  "required_by_date": "YYYY-MM-DD or null",
+  "required_by_date": "YYYY-MM-DD or null — ALWAYS convert relative dates ('in 2 weeks', '1 month', 'by end of April') to a concrete YYYY-MM-DD date",
   "preferred_supplier": "supplier name or null",
   "urgency": "critical | high | normal | flexible",
   "flexibility_signals": ["list of flexible requirements mentioned"],
@@ -33,7 +37,7 @@ Return ONLY valid JSON with these fields (use null for missing/uncertain values)
   "text_quantity": integer or null (quantity explicitly mentioned in text, may differ from structured field),
   "text_budget": number or null (budget mentioned in text),
   "confidence": 0.0-1.0
-}
+}}
 
 Category taxonomy:
 IT: Laptops, Mobile Workstations, Desktop Workstations, Monitors, Docking Stations, Smartphones, Tablets, Rugged Devices, Accessories Bundles, Replacement / Break-Fix Pool Devices, Cloud Compute, Cloud Storage, Cloud Networking, Managed Cloud Platform Services, Cloud Security Services
@@ -41,7 +45,13 @@ Facilities: Workstations and Desks, Office Chairs, Meeting Room Furniture, Stora
 Professional Services: Cloud Architecture Consulting, Cybersecurity Advisory, Data Engineering Services, Software Development Services, IT Project Management Services
 Marketing: Search Engine Marketing (SEM), Social Media Advertising, Content Production Services, Marketing Analytics Services, Influencer Campaign Management
 
-Be precise. If the text says "approximately" or "around", note that in flexibility_signals."""
+Be precise. If the text says "approximately" or "around", note that in flexibility_signals.
+IMPORTANT: For required_by_date, ALWAYS convert relative time expressions to a concrete date. Examples:
+- "in 2 weeks" → {today} + 14 days
+- "within 1 month" → {today} + 30 days
+- "next week" → {today} + 7 days
+- "by end of Q2" → 2026-06-30
+Never leave required_by_date as null if the text mentions ANY deadline or timeframe."""
 
 
 TRANSLATION_SYSTEM = """You are a translator for procurement requests. Translate the following text to English.
@@ -234,7 +244,7 @@ If the text mentions a quantity or budget that differs from the structured field
 
 Return ONLY the JSON object."""
 
-    return call_claude_json(EXTRACTION_SYSTEM, prompt)
+    return call_claude_json(_get_extraction_system(), prompt)
 
 
 def _llm_narrate(
@@ -308,30 +318,40 @@ def _regex_extract(request_text: str, existing_fields: dict) -> dict:
                 pass
             break
 
-    # Date extraction
-    date_patterns = [
-        r'(\d{4}-\d{2}-\d{2})',
-        r'by\s+(\d{1,2}\s+\w+\s+\d{4})',
-        r'within\s+(\d+)\s*(?:week|day)',
-    ]
-    for pattern in date_patterns:
-        match = re.search(pattern, text)
-        if match:
-            val = match.group(1)
-            # ISO date
-            if re.match(r'\d{4}-\d{2}-\d{2}', val):
-                result["text_date"] = val
-            # "within X weeks/days"
-            elif val.isdigit():
-                try:
-                    days = int(val)
-                    if "week" in text[match.start():match.end() + 10]:
-                        days *= 7
-                    future = datetime.utcnow() + timedelta(days=days)
-                    result["text_date"] = future.strftime("%Y-%m-%d")
-                except (ValueError, OverflowError):
-                    pass
-            break
+    # Date extraction — handles ISO dates, relative dates, and natural language
+    now = datetime.utcnow()
+
+    # ISO date
+    iso_match = re.search(r'(\d{4}-\d{2}-\d{2})', text)
+    if iso_match:
+        result["required_by_date"] = iso_match.group(1)
+    else:
+        # Relative date patterns: "in 2 weeks", "within 1 month", "in 30 days", "next week"
+        relative_patterns = [
+            (r'(?:in|within|next)\s+(\d+)\s*(week|weeks|month|months|day|days)', None),
+            (r'(?:in|within)\s+(?:a|one|1)\s*(week|month)', 1),
+            (r'next\s*(week|month)', 1),
+        ]
+        for pattern, fixed_num in relative_patterns:
+            match = re.search(pattern, text)
+            if match:
+                if fixed_num is not None:
+                    num = fixed_num
+                    unit = match.group(1)
+                else:
+                    num = int(match.group(1))
+                    unit = match.group(2)
+
+                if unit.startswith("week"):
+                    delta = timedelta(days=num * 7)
+                elif unit.startswith("month"):
+                    delta = timedelta(days=num * 30)
+                else:
+                    delta = timedelta(days=num)
+
+                future = now + delta
+                result["required_by_date"] = future.strftime("%Y-%m-%d")
+                break
 
     # Supplier name extraction (look for known patterns)
     supplier_patterns = [

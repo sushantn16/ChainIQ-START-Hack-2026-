@@ -74,6 +74,7 @@ def process_request(req: ProcessRequest) -> PipelineResult:
             currency=interp.currency or "EUR",
             quantity=interp.quantity,
             data_residency_required=interp.data_residency_required,
+            esg_required=interp.esg_requirement,
             contract_value=estimated_value,
             store=store,
         )
@@ -370,6 +371,7 @@ def process_request_streaming(req: ProcessRequest):
             currency=interp.currency or "EUR",
             quantity=interp.quantity,
             data_residency_required=interp.data_residency_required,
+            esg_required=interp.esg_requirement,
             contract_value=estimated_value,
             store=store,
         )
@@ -895,7 +897,7 @@ def _build_interpretation(req: ProcessRequest, raw: dict | None) -> RequestInter
         quantity = req.quantity or llm_fields.get("quantity") or llm_fields.get("text_quantity")
         budget = req.budget_amount or llm_fields.get("budget_amount") or llm_fields.get("text_budget")
         currency = req.currency or llm_fields.get("currency", "EUR")
-        required_by = req.required_by_date or llm_fields.get("required_by_date")
+        required_by = req.required_by_date or llm_fields.get("required_by_date") or llm_fields.get("text_date")
         preferred = req.preferred_supplier_mentioned or llm_fields.get("preferred_supplier")
         delivery = req.delivery_countries or ([req.country] if req.country else
                    llm_fields.get("delivery_countries", []))

@@ -40,7 +40,7 @@ export default function ResultView({ result, onApplyScenario }) {
       </div>
 
       {/* Approval & Escalation Banners — shown above shortlist */}
-      {r.policy_evaluation?.approval_threshold && (
+      {r.policy_evaluation?.approval_threshold?.deviation_approval && (
         <div className="flex items-start gap-3 p-5 border border-[#e0e0e0] bg-white rounded-xl">
           <span className="text-lg mt-0.5">🔒</span>
           <div className="flex-1">
